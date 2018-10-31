@@ -1,0 +1,204 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta charset="utf-8">
+<title>Audio</title>
+<style>
+label {display: block;}
+</style>
+</head>
+
+<body>
+<h1>Test</h1>
+
+<div id="controls">
+<div class="player">
+<label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
+<button id="load" accesskey="l">Load</button>
+<br><audio tabindex="0" controls></audio>
+</div>
+
+<div class="dry">
+<label>Single mode: <input type="checkbox" id="single" accesskey="s"></label>
+<label>dry gain: <input type="range" id="dryGain" min="0" max="1.0" step="0.1" value="0.6" accesskey="g"></label>
+<label>dry pan: <input id="dryPan" type="range" min="-1" max="1" step=".1" value="0"></label>
+</div>
+
+<div class="wet">
+<label>wet gain: <input type="range" id="wetGain" min="-2" max="2.0" step="0.1" value="-0.3" accesskey="w"></label>
+<label>wet pan: <input id="wetPan" type="range" min="-1" max="1" step=".1" value="0"></label>
+</div>
+
+<div class="effects">
+<h2>Effects</h2>
+<label>pan: <input type="range" id="pan" min="0" max="1" step="0.1" value="0.5" accesskey="p"></label>
+
+<h3>Filter</h3>
+<label>type: <input type="text" id="type" value="allpass" accesskey="t"></label>
+<label>rolloff: <input type="range" id="rolloff" min="-48" max=-12" step="12" value="-24"></label>
+<label>frequency: <input type="number" id="freq" min="20" max="20000" step="20" value="200" accesskey="f"></label>
+<label>frequency range: <input type="range" id="freqRange" min="1" max="500" step="20" value="1"></label>
+<label>frequency rate: <input type="number" id="freqRate" min="0" max="2" step=".1" value="0"></label>
+<br><label>Q: <input type="range" id="q" min="0" max="20" step="0.1" value="1" accesskey="q"></label>
+<label>Q range: <input type="range" id="qRange" min="1" max="10" step="0.1" value="0"></label>
+<label>Q rate: <input type="range" id="qRate"  min="0" max="2" step="0.1" value="0"></label>
+
+<h3>Delay</h3>
+<label>delay: <input id="delay" type="range" min="0" max="0.1" step="0.0001"  value="0" accesskey="d"> seconds</label>
+<label>delay range: <input id="delayRange" type="range" min="0" max="10" step="0.0001"  value="0"> seconds</label>
+<label>Delay rate: <input id="delayRate" type="range" min="0" max="2" step="0.1"  value="0"></label>
+</div>
+
+<div class="automation">
+<h2>Automation</h2>
+<label>automation: <input id="automation" type="checkbox" checked accesskey="r"></label>
+<label>tick: <input type="range" id="tick" min="20" max="300" value="200"> milliseconds</label>
+</div>
+
+</div>
+
+<script>
+const audio = new AudioContext();
+const audioElement = document.querySelector("audio");
+const player = audio.createMediaElementSource (audioElement);
+const output = audio.destination;
+
+
+/// create nodes
+
+const dryPan = audio.createStereoPanner();
+const wetPan = audio.createStereoPanner();
+const f = audio.createBiquadFilter();
+const d = audio.createDelay();
+const vWet = audio.createGain ();
+const vDry = audio.createGain();
+
+const s = audio.createChannelSplitter(2);
+const m = audio.createChannelMerger(2);
+
+/// connections
+
+// dry
+player.connect(dryPan).connect(vDry);
+
+// wet
+player.connect(wetPan).connect(f).connect(d).connect(vWet);
+
+// mix
+vDry.connect(output);
+
+vWet.connect(s);
+
+s.connect(m, 0,1);
+s.connect(m, 1,0);
+
+m.connect(output);
+
+/// set values
+fixNumberInputs();
+setValues ();
+
+let automation = null;
+
+/// events
+
+controls.addEventListener("change", (e) => {
+if (getValue("automation")) {
+automate(automator);
+} else {
+setValues ();
+} // if
+}); // controls
+
+
+function automate (automator) {
+if (getValue("automation")) {
+setTimeout(function _tick () {
+automator();
+if (getValue("automation")) setTimeout(_tick, getValue("tick"));
+}, getValue("tick"));
+} // if
+} // automate
+
+function automator (value) {
+const pi = Math.PI;
+const sin = Math.sin;
+const cos = Math.cos;
+const x = audio.currentTime;
+
+vDry.gain.value = getValue("dryGain");
+vWet.gain.value = getValue("wetGain");
+
+//dryPan.pan.value = sin(x);
+wetPan.pan.value = sin(x * getValue("pan"));
+f.frequency.value = getValue("freqRange") * sin(x * getValue("freqRate")) + getValue("freq");
+f.Q.value = getValue("qRange")  * sin(x * getValue("qRate") + 1) + getValue("q");
+d.delayTime.value = getValue("delayRange") * sin(x * getValue("delayRate") + .707) + getValue("delay");
+} // automator
+
+ui("load").addEventListener("click", load);
+
+function setValues () {
+vDry.gain.value = getValue("dryGain");
+vWet.gain.value = getValue("wetGain");
+
+f.frequency.value = getValue("freq");
+f.Q.value = getValue("q");
+f.type = getValue("type");
+
+d.delayTime.value = getValue("delay");
+dryPan.pan.value = getValue("dryPan");
+wetPan.pan.value = getValue("wetPan");
+} // setValues
+
+function setSingleMode (enable) {
+if (enable) {
+vDry.disconnect();
+vDry.connect(pLeft);
+vWet.disconnect();
+vWet.connect(pRight);
+
+} else {
+vDry.disconnect();
+vDry.connect(output);
+
+vWet.disconnect();
+vWet.connect(s);
+
+s.connect(pLeft,0,0)
+.connect(output);
+
+s.connect(pRight,1,0)
+.connect(output);
+} // if
+} // setSingleMode
+
+function ui(id) {
+return document.querySelector (`input#${id},button#${id}`);
+} // ui
+
+function getValue (id) {
+if (ui(id).getAttribute("type") === "checkbox") return ui(id).checked;
+
+const value = ui(id).value;
+return Number.isNaN(Number(value))?
+value
+: Number(value);
+} // getValue
+
+function fixNumberInputs () {
+Array.from(document.querySelectorAll("input[type='number']"))
+.forEach(x => x.setAttribute("aria-label", x.parentElement.textContent));
+} // fixNumberInputs
+
+function load () {
+const audioElement = document.querySelector("audio")
+audioElement.src = getValue("audioFile");
+audioElement.play();
+} // load
+
+</script>
+
+</body>
+</html>

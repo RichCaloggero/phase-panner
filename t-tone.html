@@ -14,7 +14,7 @@ label {display: block;}
 
 <div id="controls">
 <div class="player">
-<label>audio: <input type="text" id="audioFile" accesskey="f"></label>
+<label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
 <button id="load" accesskey="l">Load</button>
 </div>
 
@@ -36,14 +36,17 @@ label {display: block;}
 <h3>Filter</h3>
 <label>type: <input type="text" id="type" value="allpass" accesskey="t"></label>
 <label>rolloff: <input type="range" id="rolloff" min="-48" max=-12" step="12" value="-24"></label>
-<label>frequency: <input type="number" id="freq" min="0" max="20000" step="20" value="2000" accesskey="f"></label>
-<label>frequency rate: <input type="number" id="freqRate" min="0" max="1" step=".1" value="1"></label>
-<br><label>Q: <input type="range" id="q" min="0" max="20" step="0.1" value=".09" accesskey="q"></label>
-<label>Q rate: <input type="range" id="qRate"  min="0" max="1" step="0.1" value=".1"></label>
+<label>frequency: <input type="number" id="freq" min="20" max="20000" step="20" value="200" accesskey="f"></label>
+<label>frequency range: <input type="range" id="freqRange" min="1" max="500" step="20" value="1"></label>
+<label>frequency rate: <input type="number" id="freqRate" min="0" max="2" step=".1" value="0"></label>
+<br><label>Q: <input type="range" id="q" min="0" max="20" step="0.1" value="1" accesskey="q"></label>
+<label>Q range: <input type="range" id="qRange" min="1" max="10" step="0.1" value="0"></label>
+<label>Q rate: <input type="range" id="qRate"  min="0" max="2" step="0.1" value="0"></label>
 
 <h3>Delay</h3>
 <label>delay: <input id="delay" type="range" min="0" max="0.1" step="0.0001"  value="0" accesskey="d"> seconds</label>
-<label>Delay rate: <input id="delayRate" type="range" min="0" max="1" step="0.1"  value="1"></label>
+<label>delay range: <input id="delayRange" type="range" min="0" max="10" step="0.0001"  value="0"> seconds</label>
+<label>Delay rate: <input id="delayRate" type="range" min="0" max="2" step="0.1"  value="0"></label>
 </div>
 
 <div class="automation">
@@ -54,7 +57,7 @@ label {display: block;}
 
 </div>
 
-<script src="tone.min.js"></script>
+<script src="tone.js"></script>
 <script>
 const audio = Tone;
 const player = new audio.Player();
@@ -126,14 +129,15 @@ const x = audio.context.currentTime;
 
 vDry.gain.value = getValue("dry");
 vWet.gain.value = getValue("gain");
+
 //dryPan.pan.value = sin(x);
-wetPan.pan.value = cos(x * getValue("pan"));
-f.Q.value = getValue("q")  * sin(x * getValue("qRate") + 1) + 1.6;
-f.frequency.value = getValue("freq") * sin(x * getValue("freqRate")) + getValue("freq");
-d.delayTime.value = getValue("delay") * sin(x * getValue("delayRate") + .707);
+wetPan.pan.value = sin(x * getValue("pan"));
+f.frequency.value = getValue("freqRange") * sin(x * getValue("freqRate")) + getValue("freq");
+f.Q.value = getValue("qRange")  * sin(x * getValue("qRate") + 1) + getValue("q");
+d.delayTime.value = getValue("delayRange") * sin(x * getValue("delayRate") + .707) + getValue("delay");
 } // automator
 
-ui("load").addEventListener("click", () => load);
+ui("load").addEventListener("click", load);
 
 function setValues () {
 vDry.gain.value = getValue("dry");
@@ -193,6 +197,10 @@ console.log("loading ", getValue("audioFile"));
 player.load(getValue("audioFile"))
 .then(() => player.start());
 } // load
+
+Tone.Buffer.on('load', function(){
+console.log ("Tone: all buffers are loaded.");	
+});
 
 </script>
 

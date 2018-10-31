@@ -32,27 +32,31 @@ label {display: block;}
 
 <div class="effects">
 <h2>Effects</h2>
-<label>pan: <input type="range" id="pan" min="0" max="1" step="0.1" value="0.5" accesskey="p"></label>
+<label>pan rate: <input type="range" id="panRate" min="0" max="1" step="0.1" value="0.5" accesskey="p"></label>
+<label>pan phase: <input type="range" id="panPhase" min="0" max="7" step="0.05" value="0"></label>
 
 <h3>Filter</h3>
 <label>type: <input type="text" id="type" value="allpass" accesskey="t"></label>
-<label>rolloff: <input type="range" id="rolloff" min="-48" max=-12" step="12" value="-24"></label>
-<label>frequency: <input type="number" id="freq" min="20" max="20000" step="20" value="200" accesskey="f"></label>
+<label>frequency: <input type="range" id="freq" min="20" max="20000" step="20" value="200" accesskey="f"></label>
 <label>frequency range: <input type="range" id="freqRange" min="1" max="500" step="20" value="1"></label>
 <label>frequency rate: <input type="number" id="freqRate" min="0" max="2" step=".1" value="0"></label>
+<label>Frequency phase: <input type="range" id="freqPhase" min="0" max="7" step="0.05" value="0"></label>
+
 <br><label>Q: <input type="range" id="q" min="0" max="20" step="0.1" value="1" accesskey="q"></label>
 <label>Q range: <input type="range" id="qRange" min="1" max="10" step="0.1" value="0"></label>
 <label>Q rate: <input type="range" id="qRate"  min="0" max="2" step="0.1" value="0"></label>
+<label>Q phase: <input type="range" id="qPhase" min="0" max="7" step="0.05" value="0"></label>
 
 <h3>Delay</h3>
 <label>delay: <input id="delay" type="range" min="0" max="0.1" step="0.0001"  value="0" accesskey="d"> seconds</label>
 <label>delay range: <input id="delayRange" type="range" min="0" max="10" step="0.0001"  value="0"> seconds</label>
 <label>Delay rate: <input id="delayRate" type="range" min="0" max="2" step="0.1"  value="0"></label>
+<label>Delay phase: <input type="range" id="delayPhase" min="0" max="7" step="0.05" value="0"></label>
 </div>
 
 <div class="automation">
 <h2>Automation</h2>
-<label>automation: <input id="automation" type="checkbox" checked accesskey="r"></label>
+<label>automation: <input id="automation" type="checkbox" accesskey="r"></label>
 <label>tick: <input type="range" id="tick" min="20" max="300" value="200"> milliseconds</label>
 </div>
 
@@ -105,9 +109,15 @@ let automation = null;
 
 controls.addEventListener("change", (e) => {
 if (getValue("automation")) {
+automation = true;
 automate(automator);
 } else {
+if (automation) {
+getValues();
+automation = false;
+} else {
 setValues ();
+} // if
 } // if
 }); // controls
 
@@ -131,10 +141,10 @@ vDry.gain.value = getValue("dryGain");
 vWet.gain.value = getValue("wetGain");
 
 //dryPan.pan.value = sin(x);
-wetPan.pan.value = sin(x * getValue("pan"));
-f.frequency.value = getValue("freqRange") * sin(x * getValue("freqRate")) + getValue("freq");
-f.Q.value = getValue("qRange")  * sin(x * getValue("qRate") + 1) + getValue("q");
-d.delayTime.value = getValue("delayRange") * sin(x * getValue("delayRate") + .707) + getValue("delay");
+wetPan.pan.value = sin(x * getValue("panRate") + getValue("panPhase"));
+f.frequency.value = getValue("freqRange") * sin(x * getValue("freqRate") + getValue("freqPhase")) + getValue("freq");
+f.Q.value = getValue("qRange")  * sin(x * getValue("qRate") + getValue("qPhase")) + getValue("q");
+d.delayTime.value = getValue("delayRange") * sin(x * getValue("delayRate") + getValue("delayPhase")) + getValue("delay");
 } // automator
 
 ui("load").addEventListener("click", load);
@@ -151,6 +161,20 @@ d.delayTime.value = getValue("delay");
 dryPan.pan.value = getValue("dryPan");
 wetPan.pan.value = getValue("wetPan");
 } // setValues
+
+function getValues () {
+ui("dryGain").value = vDry.gain.value;
+ui("wetGain").value = vWet.gain.value;
+
+ui("freq").value = f.frequency.value;
+ui("q").value = f.Q.value;
+
+ui("delay").value = d.delayTime.value;
+
+ui("dryPan").value = dryPan.pan.value;
+ui("wetPan").value = wetPan.pan.value;
+} // getValues
+
 
 function setSingleMode (enable) {
 if (enable) {

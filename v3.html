@@ -16,12 +16,14 @@ label {display: block;}
 <div class="player">
 <label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
 <button id="load" accesskey="l">Load</button>
-<br><audio tabindex="0" controls></audio>
+<br><audio tabindex="0" controls accesskey="a"></audio>
 </div>
 
 <div class="dry">
 <label>Single mode: <input type="checkbox" id="single" accesskey="s"></label>
+<label>Adjustment filter gain: <input type="range" id="adjustmentGain" min="-24" max="0" value="0" accesskey="x"></label>
 <label>dry gain: <input type="range" id="dryGain" min="0" max="1.0" step="0.1" value="0.6" accesskey="g"></label>
+
 <label>dry pan: <input id="dryPan" type="range" min="-1" max="1" step=".1" value="0"></label>
 </div>
 
@@ -48,7 +50,7 @@ label {display: block;}
 <label>Q phase: <input type="range" id="qPhase" min="0" max="7" step="0.05" value="0"></label>
 
 <h3>Delay</h3>
-<label>delay: <input id="delay" type="range" min="0" max="0.1" step="0.0001"  value="0" accesskey="d"> seconds</label>
+<label>delay: <input id="delay" type="range" min="0" max="0.1" step="0.00001"  value="0" accesskey="d"> seconds</label>
 <label>delay range: <input id="delayRange" type="range" min="0" max="10" step="0.0001"  value="0"> seconds</label>
 <label>Delay rate: <input id="delayRate" type="range" min="0" max="2" step="0.1"  value="0"></label>
 <label>Delay phase: <input type="range" id="delayPhase" min="0" max="7" step="0.05" value="0"></label>
@@ -65,11 +67,14 @@ label {display: block;}
 <script>
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
-const player = audio.createMediaElementSource (audioElement);
-const output = audio.destination;
+
 
 
 /// create nodes
+const player = audio.createMediaElementSource (audioElement);
+const input = audio.createGain();
+const output = audio.destination;
+const adjustmentFilter = audio.createBiquadFilter();
 
 const dryPan = audio.createStereoPanner();
 const wetPan = audio.createStereoPanner();
@@ -82,12 +87,13 @@ const s = audio.createChannelSplitter(2);
 const m = audio.createChannelMerger(2);
 
 /// connections
+player.connect(adjustmentFilter).connect(input);
 
 // dry
-player.connect(dryPan).connect(vDry);
+input.connect(dryPan).connect(vDry);
 
 // wet
-player.connect(wetPan).connect(f).connect(d).connect(vWet);
+input.connect(wetPan).connect(f).connect(d).connect(vWet);
 
 // mix
 vDry.connect(output);
@@ -99,11 +105,12 @@ s.connect(m, 1,0);
 
 m.connect(output);
 
-/// set values
+/// initialize
 fixNumberInputs();
 setValues ();
-
-let automation = null;
+adjustmentFilter.type = "peaking";
+load();
+let automation = false;
 
 /// events
 
@@ -156,6 +163,10 @@ vWet.gain.value = getValue("wetGain");
 f.frequency.value = getValue("freq");
 f.Q.value = getValue("q");
 f.type = getValue("type");
+
+adjustmentFilter.Q.value = f.Q.value;
+adjustmentFilter.frequency.value = f.frequency.value;
+adjustmentFilter.gain.value = getValue("adjustmentGain");
 
 d.delayTime.value = getValue("delay");
 dryPan.pan.value = getValue("dryPan");
@@ -216,10 +227,9 @@ Array.from(document.querySelectorAll("input[type='number']"))
 .forEach(x => x.setAttribute("aria-label", x.parentElement.textContent));
 } // fixNumberInputs
 
-function load () {
-const audioElement = document.querySelector("audio")
+function load (autoPlay) {
 audioElement.src = getValue("audioFile");
-audioElement.play();
+if (autoPlay) audioElement.play();
 } // load
 
 </script>

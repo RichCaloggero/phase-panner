@@ -53,7 +53,7 @@ object[property] = value;
 } // class
 
 
-/// tests
+/*/// tests
 
 const b = new Bind();
 const o1 = {a:1,b:2};
@@ -64,3 +64,4 @@ console.log("test: ", o1, o2);
 
 b.setValue (o2,"b", 1313);
 console.log("test: ", o1, o2);
+*/

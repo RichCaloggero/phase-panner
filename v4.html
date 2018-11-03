@@ -19,12 +19,18 @@ label {display: block;}
 <br><audio tabindex="0" controls accesskey="a"></audio>
 </div>
 
+<div id="parameters">
+<div class="project">
+<h2>Parameters</h2>
+<button id="save" accesskey="s">Save</button>
+<button id="restore" accesskey="r">Restore</button>
+</div>
+
 <div class="dry">
-<label>Single mode: <input type="checkbox" id="single" accesskey="s"></label>
-<label>Adjustment filter gain: <input type="range" id="adjustmentGain" min="-24" max="0" value="0" accesskey="x"></label>
+<h2>Dry</h2>
 <label>dry gain: <input type="range" id="dryGain" min="0" max="1.0" step="0.1" value="0.6" accesskey="g"></label>
 
-<label>dry pan: <input id="dryPan" type="range" min="-1" max="1" step=".1" value="0"></label>
+<label>dry pan: <input id="dryPan" type="range" min="-1" max="1" step="0.1" value="0"></label>
 </div>
 
 <div class="wet">
@@ -61,31 +67,48 @@ label {display: block;}
 <label>automation: <input id="automation" type="checkbox" accesskey="r"></label>
 <label>tick: <input type="range" id="tick" min="20" max="300" value="200"> milliseconds</label>
 </div>
+</div><!-- #parameters -->
 
-</div>
+</div><!-- #controls -->
 
-<script src="ui.js"></script>
+<script src="bind.js"></script>
 <script>
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
 
 
+
 /// create nodes
 const player = audio.createMediaElementSource (audioElement);
 const input = audio.createGain();
-const output = audio.destination;
-const adjustmentFilter = audio.createBiquadFilter();
+const output = audio.createGain();
 
 const dryPan = audio.createStereoPanner();
 const wetPan = audio.createStereoPanner();
+const panRange = audio.createOscillator();
+const panRate = audio.createOscillator();
+panRate.connect(panRange).connect(wetPan.pan);
+
 const f = audio.createBiquadFilter();
+const freqRange = audio.createOscillator();
+const freqRate = audio.createOscillator();
+freqRate.connect(freqRange).connect(f.frequency);
+
+const qRange = audio.createOscillator();
+const qRate = audio.createOscillator();
+qRate.connect(qRange).connect(f.Q);
+
 const d = audio.createDelay();
+const delayRange = audio.createOscillator();
+const delayRate = audio.createOscillator();
+delayRate.connect(delayRange).connect(d.delayTime);
+
+
 const vWet = audio.createGain ();
 const vDry = audio.createGain();
 
 const s = audio.createChannelSplitter(2);
 const m = audio.createChannelMerger(2);
-const nodeMap = createNodeMap();
 
 /// connections
 player.connect(input);
@@ -105,29 +128,45 @@ s.connect(m, 0,1);
 s.connect(m, 1,0);
 
 m.connect(output);
+output.connect(audio.destination);
 
 /// initialize
+const nodeMap = createNodeMap (new Bind());
 fixNumberInputs();
-setAllNodeValues();
-load();
-let automationRunning = false;
+setAllNodeValues ();
+let automation = false;
+load("autoplay");
+
 
 /// events
 
+ui("save").addEventListener("click", save);
+ui("restore").addEventListener("click", restore);
+
+ui("load").addEventListener("click", () => load("autoplay"));
+
+
 controls.addEventListener("change", (e) => {
 if (getValue("automation")) {
-if (!automationRunning) {
-automationRunning = true;
+automation = true;
 automate(automator);
-} // if
-
 } else {
-automationRunning = false;
-uiToNode(e.target.id);
+if (automation) {
+getAllUiValues();
+automation = false;
+} else {
+setAllNodeValues ();
+} // if
 } // if
 }); // controls
 
+
+
+/// Automation
+
+
 function automate (automator) {
+return;
 if (getValue("automation")) {
 setTimeout(function _tick () {
 automator();
@@ -152,7 +191,61 @@ f.Q.value = getValue("qRange")  * sin(x * getValue("qRate") + getValue("qPhase")
 d.delayTime.value = getValue("delayRange") * sin(x * getValue("delayRate") + getValue("delayPhase")) + getValue("delay");
 } // automator
 
-ui("load").addEventListener("click", load);
+
+function save () {
+localStorage.userValues = getAllUserValues();
+} // save 
+
+function restore () {
+setAllUserValues (localStorage.userValues);
+} // restore
+
+function setAllNodeValues () {
+getAllUiValues()
+.forEach(x => {
+const [id, uiValue] = x;
+//console.log("x, id, uiValue: ", x, id,uiValue);
+if (nodeMap.has(id)) {
+const [node, parameter] = nodeMap.get(id);
+node[parameter] = uiValue;
+} // if
+}); // forEach
+} // setAllNodeValues 
+
+
+function ui(id) {
+return document.querySelector (`input#${id},button#${id}`);
+} // ui
+
+function getValue (id) {
+if (ui(id).getAttribute("type") === "checkbox") return ui(id).checked;
+
+const value = ui(id).value;
+return Number.isNaN(Number(value))?
+value
+: Number(value);
+} // getValue
+
+
+function getAllUiValues () {
+return enumerateUiElements()
+.map(x => [x.id, getValue(x.id)]);
+} // getAllUiValues 
+
+function setAllUiValues (values) {
+values.forEach(x => {
+const [key,value] = x;
+ui(key).value = value;
+}); // forEach
+} // setAllUiValues 
+
+function enumerateUiElements () {
+return Array.from(document.querySelectorAll("#parameters input"))
+.filter(x => (
+["text", "number", "range", "checkbox", "radio", "select"]
+.includes(x.type)
+)); // filter
+} // enumerateUiElements
 
 
 function fixNumberInputs () {
@@ -165,6 +258,37 @@ audioElement.src = getValue("audioFile");
 if (autoPlay) audioElement.play();
 } // load
 
+/// remove
+function setValues () {
+vDry.gain.value = getValue("dryGain");
+vWet.gain.value = getValue("wetGain");
+
+f.frequency.value = getValue("freq");
+f.Q.value = getValue("q");
+f.type = getValue("type");
+
+
+d.delayTime.value = getValue("delay");
+dryPan.pan.value = getValue("dryPan");
+wetPan.pan.value = -1 * getValue("wetPan");
+} // setValues
+
+function getValues () {
+ui("dryGain").value = vDry.gain.value;
+ui("wetGain").value = vWet.gain.value;
+
+ui("freq").value = f.frequency.value;
+ui("q").value = f.Q.value;
+
+ui("delay").value = d.delayTime.value;
+
+ui("dryPan").value = dryPan.pan.value;
+ui("wetPan").value = wetPan.pan.value;
+} // getValues
+
+
+
+
 function createNodeMap (bind) {
 return new Map([
 ["wetGain", [vWet, "gain"]],
@@ -172,26 +296,23 @@ return new Map([
 
 ["wetPan", [wetPan, "pan"]],
 ["dryPan", [dryPan, "pan"]],
-["panRate", [automation, "panRate"]],
-["panPhase", [automation, "panPhase"]],
+["panRate", [panRate, "frequency"]],
 
 ["type", [f, "type"]],
 ["freq", [f, "frequency"]],
-["freqRange", [automation, "freqRange"]],
-["freqRate", [automation, "freqRate"]],
-["freqPhase", [automation, "freqPhase"]],
+["freqRange", [freqRange, "gain"]],
+["freqRate", [freqRate, "frequency"]],
 
 ["q", [f, "Q"]],
-["qRate", [automation, "qRate"]],
-["qPhase", [automation, "qPhase"]],
+["qRange", [qRange, "gain"]],
+["qRate", [qRate, "frequency"]],
 
 ["delay", [d, "delayTime"]],
-["delayRate", [automation, "delayRate"]],
-["delayPhase", [automation, "delayPhase"]]
+["delayRange", [delayRange, "gain"]],
+["delayRate", [delayRate, "frequency"]]
 
 ]); // new Map
 } // createNodeMap
-
 </script>
 
 </body>

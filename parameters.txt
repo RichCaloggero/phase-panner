@@ -1,0 +1,8 @@
+dry: .9, wet: .2
+dry pan: 0, wet pan: -0.5 
+pan rate: 0.2, pan phase: 0.45
+type: notch, frequency: 3740, range: 121, rate: 0.5, phase: 0.1
+q: 0, range: 2.4, rate: 0.5, phase: 0.75
+delay: 0.00223, range: 0.0033, rate: 0, phase: 0.15
+automation: checked, tick: 96, 
+

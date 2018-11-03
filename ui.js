@@ -7,7 +7,7 @@ setAllUserValues (localStorage.userValues);
 } // restore
 
 function setAllNodeValues () {
-getAllUiIds().forEach(id => uiToNode(id)); // forEach
+getAllUiIds().forEach(id => uiToNode(id));
 } // setAllNodeValues 
 
 function setAllUiValues () {
@@ -15,31 +15,49 @@ getAllUiIds().forEach(id => nodeToUi(id)); // forEach
 } // setAllUiValues 
 
 function uiToNode (id) {
+if (id) {
 const value = getValue(id);
 if (value === undefined) return;
 
+console.log(nodeMap);
 const [node, parameterName] = nodeMap.get(id);
-if (node && node instanceof AudioNode) {
+setNode (node, parameterName, value);
+
+} else {
+console.log("uiToNode: cannot set ", id);
+} // if
+} // uiToNode
+
+function nodeToUi (id) {
+const [node, parameterName] = nodeMap.get(id);
+return getNode(node, parameterName);
+} // nodeToUi
+
+function setNode (node, parameterName, value) {
+/*if (node 
+&& (node === automation || node instanceof AudioNode)
+) {
+*/
 const parameter = node[parameterName];
 if (parameter instanceof AudioParam) {
 parameter.value = value;
 } else {
 node[parameterName] = value;
 } // if
-} // if
-} // uiToNode
+//} // if
+} // setNode
 
-function nodeToUi (id) {
-const [node, parameterName] = nodeMap.get(id);
-if (node && node instanceof AudioNode) {
+function getNode (node, parameterName) {
+//if (node && node instanceof AudioNode) {
 const parameter = node[parameterName];
-if (parameter instanceof AudioParam) {
-ui(id).value = parameter.value;
+if (parameter && parameter instanceof AudioParam) {
+return parameter.value;
 } else {
-ui(id).value = node[parameterName];
+return node[parameterName];
 } // if
-} // if
-} // uiToNode
+//} // if
+} // getNode
+
 
 function getAllUiIds () {
 return enumerateUiElements().map(x => x.id);

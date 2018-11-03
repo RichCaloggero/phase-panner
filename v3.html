@@ -19,9 +19,8 @@ label {display: block;}
 <br><audio tabindex="0" controls accesskey="a"></audio>
 </div>
 
+<div id="parameters">
 <div class="dry">
-<label>Single mode: <input type="checkbox" id="single" accesskey="s"></label>
-<label>Adjustment filter gain: <input type="range" id="adjustmentGain" min="-24" max="0" value="0" accesskey="x"></label>
 <label>dry gain: <input type="range" id="dryGain" min="0" max="1.0" step="0.1" value="0.6" accesskey="g"></label>
 
 <label>dry pan: <input id="dryPan" type="range" min="-1" max="1" step=".1" value="0"></label>
@@ -54,7 +53,7 @@ label {display: block;}
 <label>delay range: <input id="delayRange" type="range" min="0" max="10" step="0.0001"  value="0"> seconds</label>
 <label>Delay rate: <input id="delayRate" type="range" min="0" max="2" step="0.1"  value="0"></label>
 <label>Delay phase: <input type="range" id="delayPhase" min="0" max="7" step="0.05" value="0"></label>
-</div>
+</div><!-- .effects -->
 
 <div class="automation">
 <h2>Automation</h2>
@@ -62,12 +61,15 @@ label {display: block;}
 <label>tick: <input type="range" id="tick" min="20" max="300" value="200"> milliseconds</label>
 </div>
 
-</div>
+</div><!-- #parameters -->
+</div><!-- #controls -->
+
 
 <script src="ui.js"></script>
 <script>
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
+const automation = {};
 
 
 /// create nodes
@@ -167,6 +169,8 @@ if (autoPlay) audioElement.play();
 
 function createNodeMap (bind) {
 return new Map([
+["tick", [automation, "tick"]],
+
 ["wetGain", [vWet, "gain"]],
 ["dryGain", [vDry, "gain"]],
 

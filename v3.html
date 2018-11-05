@@ -112,28 +112,29 @@ m.connect(output);
 fixNumberInputs();
 setAllNodeValues();
 load();
-let automationRunning = false;
+automation.running = false;
 
 /// events
 
 controls.addEventListener("change", (e) => {
 if (getValue("automation")) {
-if (!automationRunning) {
-automationRunning = true;
+if (!automation.running) {
+automation.running = true;
 automate(automator);
 } // if
 
 } else {
-automationRunning = false;
-uiToNode(e.target.id);
+automation.running = false;
 } // if
+
+uiToNode(e.target.id);
 }); // controls
 
 function automate (automator) {
-if (getValue("automation")) {
+if (automation.running) {
 setTimeout(function _tick () {
 automator();
-if (getValue("automation")) setTimeout(_tick, getValue("tick"));
+if (automation.running) setTimeout(_tick, getValue("tick"));
 }, getValue("tick"));
 } // if
 } // automate
@@ -148,10 +149,10 @@ vDry.gain.value = getValue("dryGain");
 vWet.gain.value = getValue("wetGain");
 
 //dryPan.pan.value = sin(x);
-wetPan.pan.value = sin(x * getValue("panRate") + getValue("panPhase"));
-f.frequency.value = getValue("freqRange") * sin(x * getValue("freqRate") + getValue("freqPhase")) + getValue("freq");
-f.Q.value = getValue("qRange")  * sin(x * getValue("qRate") + getValue("qPhase")) + getValue("q");
-d.delayTime.value = getValue("delayRange") * sin(x * getValue("delayRate") + getValue("delayPhase")) + getValue("delay");
+wetPan.pan.value = sin(x * automation.panRate + automation.panPhase);
+f.frequency.value = automation.freqRange * sin(x * automation.freqRate + automation.freqPhase) + getValue("freq");
+f.Q.value = automation.qRange  * sin(x * automation.qRate + automation.qPhase) + getValue("q");
+d.delayTime.value = automation.delayRange * sin(x * automation.delayRate + automation.delayPhase) + getValue("delay");
 } // automator
 
 ui("load").addEventListener("click", load);
@@ -169,8 +170,6 @@ if (autoPlay) audioElement.play();
 
 function createNodeMap (bind) {
 return new Map([
-["tick", [automation, "tick"]],
-
 ["wetGain", [vWet, "gain"]],
 ["dryGain", [vDry, "gain"]],
 
@@ -186,12 +185,17 @@ return new Map([
 ["freqPhase", [automation, "freqPhase"]],
 
 ["q", [f, "Q"]],
+["qRange", [automation, "qRange"]],
 ["qRate", [automation, "qRate"]],
 ["qPhase", [automation, "qPhase"]],
 
 ["delay", [d, "delayTime"]],
+["delayRange", [automation, "delayRange"]],
 ["delayRate", [automation, "delayRate"]],
-["delayPhase", [automation, "delayPhase"]]
+["delayPhase", [automation, "delayPhase"]],
+
+["automation", [automation, "running"]],
+["tick", [automation, "tick"]],
 
 ]); // new Map
 } // createNodeMap

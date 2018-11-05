@@ -1,10 +1,30 @@
 function save () {
-localStorage.userValues = getAllUserValues();
+localStorage.userValues = JSON.stringify(getAllUiValues());
 } // save 
 
 function restore () {
-setAllUserValues (localStorage.userValues);
+try {
+const values = JSON.parse(localStorage.userValues);
+console.log("restoring ", values.length);
+setAllUiValues (values);
+setAllNodeValues();
+
+} catch (e) {
+console.log("restore: ", e);
+} // catch
 } // restore
+
+function getAllUiValues () {
+return getAllUiIds().map(id => [id, getValue(id)]);
+} // getAllUiValues 
+
+function setAllUiValues (values) {
+values.forEach(x => {
+const [id, value] = x;
+if (id && ui(id)) ui(id).value = value;
+}); // forEach
+} // setAllUiValues 
+
 
 function setAllNodeValues () {
 getAllUiIds().forEach(id => uiToNode(id));
@@ -15,22 +35,25 @@ getAllUiIds().forEach(id => nodeToUi(id)); // forEach
 } // setAllUiValues 
 
 function uiToNode (id) {
-if (id) {
 const value = getValue(id);
 if (value === undefined) return;
 
-console.log(nodeMap);
+if (id && nodeMap.has(id)) {
 const [node, parameterName] = nodeMap.get(id);
 setNode (node, parameterName, value);
-
 } else {
 console.log("uiToNode: cannot set ", id);
 } // if
 } // uiToNode
 
 function nodeToUi (id) {
+if (id && nodeMap.has(id)) {
 const [node, parameterName] = nodeMap.get(id);
 return getNode(node, parameterName);
+} else {
+console.log("nodeToUI: cannot get -- ", id);
+return undefined;
+} // if
 } // nodeToUi
 
 function setNode (node, parameterName, value) {
@@ -62,17 +85,6 @@ return node[parameterName];
 function getAllUiIds () {
 return enumerateUiElements().map(x => x.id);
 } // getAllUiIds
-
-function getAllUiValues () {
-return getAllUiIds().map(id => [id, getValue(id)]);
-} // getAllUiValues 
-
-function setAllUiValues (values) {
-values.forEach(x => {
-const [id, value] = x;
-ui(id).value = value;
-}); // forEach
-} // setAllUiValues 
 
 function enumerateUiElements () {
 return Array.from(document.querySelectorAll("#parameters input"))

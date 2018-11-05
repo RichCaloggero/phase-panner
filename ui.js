@@ -1,38 +1,41 @@
 function save () {
-localStorage.userValues = JSON.stringify(getAllUiValues());
+localStorage.userValues = JSON.stringify(getUserValues());
 } // save 
 
 function restore () {
 try {
 const values = JSON.parse(localStorage.userValues);
-console.log("restoring ", values.length);
-setAllUiValues (values);
-setAllNodeValues();
-
+console.log("restoring ", values.length, " parameters from localStorage...");
+setUserValues(values);
+console.log("setUserValues completed");
+allUiToNode();
+console.log("allUiToNode completed");
 } catch (e) {
 console.log("restore: ", e);
 } // catch
 } // restore
 
-function getAllUiValues () {
+function getUserValues () {
 return getAllUiIds().map(id => [id, getValue(id)]);
-} // getAllUiValues 
+} // getUserValues 
 
-function setAllUiValues (values) {
+function setUserValues (values) {
 values.forEach(x => {
 const [id, value] = x;
-if (id && ui(id)) ui(id).value = value;
+if (id && ui(id)) {
+ui(id).value = value;
+} // if
 }); // forEach
-} // setAllUiValues 
+} // setUserValues 
 
 
-function setAllNodeValues () {
+function allUiToNode () {
 getAllUiIds().forEach(id => uiToNode(id));
-} // setAllNodeValues 
+} // allUiToNode 
 
-function setAllUiValues () {
+function allNodeToUi () {
 getAllUiIds().forEach(id => nodeToUi(id)); // forEach
-} // setAllUiValues 
+} // allNodeToUi 
 
 function uiToNode (id) {
 const value = getValue(id);

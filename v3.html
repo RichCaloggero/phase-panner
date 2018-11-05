@@ -20,6 +20,11 @@ label {display: block;}
 </div>
 
 <div id="parameters">
+<div>
+<button id="save" accesskey="s">Save</button>
+<button id="restore" accesskey="r">Restore</button>
+</div>
+
 <div class="dry">
 <label>dry gain: <input type="range" id="dryGain" min="0" max="1.0" step="0.1" value="0.6" accesskey="g"></label>
 
@@ -110,11 +115,14 @@ m.connect(output);
 
 /// initialize
 fixNumberInputs();
-setAllNodeValues();
+allUiToNode();
 load();
 automation.running = false;
 
 /// events
+
+ui("save").addEventListener("click", save);
+ui("restore").addEventListener("click", restore);
 
 controls.addEventListener("change", (e) => {
 if (getValue("automation")) {
@@ -128,7 +136,9 @@ automation.running = false;
 } // if
 
 uiToNode(e.target.id);
-}); // controls
+}); // change #controls
+
+
 
 function automate (automator) {
 if (automation.running) {

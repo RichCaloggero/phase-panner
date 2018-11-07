@@ -81,8 +81,8 @@ const r = audio.createGain();
 const xs = audio.createChannelSplitter(2);
 const xm = audio.createChannelMerger(2);
 const xf = audio.createBiquadFilter();
-const xdl = audio.createDelay();
-const xdr = audio.createDelay();
+const xdl = audio.createBiquadFilter();
+const xdr = audio.createBiquadFilter();
 
 binaural.out.connect(xtc).connect(xDry).connect(output);
 
@@ -101,7 +101,9 @@ xf.Q.value = 1;
 
 l.gain.value = r.gain.value = -1
 xtc.gain.value = 2.5;
-xdl.delayTime.value = xdr.delayTime.value = 0.000250;
+//xdl.delayTime.value = xdr.delayTime.value = 0.000250;
+xdl.frequency.value = xdr.frequency.value = 1000;
+xdl.type = xdr.type = "allpass";
 
 
 /// initialize
@@ -156,9 +158,9 @@ document.querySelector("#xtc").addEventListener("change", (e) => {
 const id = e.target.id;
 const value = Number(e.target.value);
 const map = {
-delay: [xdl.delayTime, xdr.delayTime],
-frequency: [xf.frequency],
-q: [xf.Q],
+//delay: [xdl.delayTime, xdr.delayTime],
+frequency: [xf.frequency, xdl.frequency, xdr.frequency],
+q: [xf.Q, xdl.Q, xdr.Q],
 }; // map
 const params = map[id];
 

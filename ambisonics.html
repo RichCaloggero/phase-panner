@@ -20,21 +20,26 @@ label {display: block;}
 </div>
 
 <div id="parameters">
+<div>
+<button id="save" accesskey="s">Save</button>
+<button id="restore" accesskey="r">Restore</button>
+</div>
+
 <div id="position">
-<label>azimuth: <input type="range" id="azim" min="-180" max="180"></label>
-<label>elevation: <input type="range" id="elev" min="-90" max="90"></label>
+<label>azimuth: <input type="range" id="azim" min="-180" max="180" accesskey="a"></label>
+<label>elevation: <input type="range" id="elev" min="-90" max="90" accesskey="e"></label>
 </div>
 
 <div id="rotation">
-<label>roll: <input type="range" id="roll" min="-90" max="90"></label>
-<label>pitch: <input type="range" id="pitch" min="-90" max="90"></label>
-<label>yaw: <input type="range" id="yaw" min="-90" max="90"></label>
+<label>roll: <input type="range" id="roll" min="-90" max="90" accesskey="r"></label>
+<label>pitch: <input type="range" id="pitch" min="-90" max="90" accesskey="p"></label>
+<label>yaw: <input type="range" id="yaw" min="-90" max="90" accesskey="y"></label>
 </div>
 
 <div id="xtc">
-<label>mix: <input type="range" id="mix" value="0" min="0" max="1" step="0.1"></label>
-<label>frequency: <input type="range" id="frequency" value="1000" min="500" max="2000" step="20"></label>
-<label>q: <input type="range" id="q" value="1" min="0" max="8" step="0.1"></label>
+<label>mix: <input type="range" id="mix" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
+<label>frequency: <input type="range" id="frequency" value="1000" min="500" max="2000" step="20" accesskey="f"></label>
+<label>q: <input type="range" id="q" value="1" min="0" max="8" step="0.1" accesskey="q"></label>
 <label>delay: <input type="range" id="delay" value="0.000250" min="0" max="0.01" step="0.00025"></label>
 </div>
 
@@ -130,6 +135,8 @@ if (autoPlay) audioElement.play();
 /// events
 
 document.querySelector("#load").addEventListener("click", load);
+document.querySelector("#save").addEventListener("click", save);
+document.querySelector("#restore").addEventListener("click", restore);
 
 document.querySelector("#parameters").addEventListener("keydown", (e) => {
 if (e.key === "0" && e.target.type && e.target.type === "range") {
@@ -212,6 +219,33 @@ f.Q.value = automation.qRange  * sin(x * automation.qRate + automation.qPhase) +
 d.delayTime.value = automation.delayRange * sin(x * automation.delayRate + automation.delayPhase) + getValue("delay");
 } // automator
 
+function enumerateUiControls () {
+return Array.from(document.querySelectorAll("#parameters input"));
+} // enumerateUiControls
+
+function getControlIds () {
+return enumerateUiControls().map(x => x.id);
+} // getControlIds 
+
+function save () {
+localStorage.userValues = JSON.stringify(
+enumerateUiControls().map(x => [x.id, x.value])
+);
+} // save
+
+function restore () {
+try {
+JSON.parse(localStorage.userValues)
+.forEach (x => {
+const [id, value] = x;
+const element = document.getElementById(id);
+element.value = value;
+element.dispatchEvent(new CustomEvent("change", {bubbles: true}));
+}); // forEach
+} catch (e) {
+alert (`Cannot restore: ${e}.`);
+} // try
+} // restore
 
 </script>
 

@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta charset="utf-8">
+<title>Ambisonics</title>
+<style>
+label {display: block;}
+</style>
+</head>
+
+<body>
+<h1>Test</h1>
+
+<div id="controls">
+<div class="player">
+<label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
+<button id="load" accesskey="l">Load</button>
+<br><audio tabindex="0" controls accesskey="a"></audio>
+</div>
+
+<div id="parameters">
+<div id="position">
+<label>azimuth: <input type="range" id="azim" min="-180" max="180"></label>
+<label>elevation: <input type="range" id="elev" min="-90" max="90"></label>
+</div>
+
+<div id="rotation">
+<label>roll: <input type="range" id="roll" min="-90" max="90"></label>
+<label>pitch: <input type="range" id="pitch" min="-90" max="90"></label>
+<label>yaw: <input type="range" id="yaw" min="-90" max="90"></label>
+</div>
+</div><!-- #parameters -->
+</div><!-- #controls -->
+
+
+<script src="ambisonics.umd.js"></script>
+<script src="ui.js"></script>
+<script>
+const audio = new AudioContext();
+const audioElement = document.querySelector("audio");
+const automation = {};
+const inLeft = new ambisonics.monoEncoder(audio, 3);
+const inRight = new ambisonics.monoEncoder(audio, 3);
+const rotator = new ambisonics.sceneRotator(audio, 3);
+const binaural = new ambisonics.binDecoder(audio, 3);
+
+/// create nodes
+const player = audio.createMediaElementSource (audioElement);
+const input = audio.createGain();
+const output = audio.destination;
+const vWet = audio.createGain ();
+const vDry = audio.createGain();
+
+const s = audio.createChannelSplitter(2);
+const m = audio.createChannelMerger(2);
+
+/// connections
+player.connect(input);
+input.connect(s);
+s.connect(inLeft.in,0);
+s.connect(inRight.in, 1);
+
+inLeft.out.connect(rotator.in);
+inRight.out.connect(rotator.in);
+rotator.out.connect(binaural.in);
+binaural.out.connect(output);
+
+
+/// initialize
+const HOA3loader = new ambisonics.HOAloader(audio, 3, "HOA3_IRC_1008_virtual.wav",
+data => binaural.updateFilters(data));
+HOA3loader.load();
+
+load();
+automation.running = false;
+
+
+
+function fixNumberInputs () {
+Array.from(document.querySelectorAll("input[type='number']"))
+.forEach(x => x.setAttribute("aria-label", x.parentElement.textContent));
+} // fixNumberInputs
+
+function load (autoPlay) {
+audioElement.src = document.querySelector("#audioFile").value;
+if (autoPlay) audioElement.play();
+} // load
+
+
+/// events
+
+document.querySelector("#load").addEventListener("click", load);
+
+document.querySelector("#parameters").addEventListener("keydown", (e) => {
+if (e.key === "0" && e.target.type && e.target.type === "range") {
+e.target.value = 0;
+e.target.dispatchEvent(new CustomEvent("change", {bubbles: true}));
+} // if
+});
+
+document.querySelector("#position").addEventListener("change", (e) => {
+const left = Number(e.target.value);
+const prop = e.target.id;
+inLeft[prop] = left;
+inRight[prop] = -1*left;
+inLeft.updateGains();
+inRight.updateGains();
+});
+
+document.querySelector("#rotation").addEventListener("change", (e) => {
+const value = Number(e.target.value);
+const prop = e.target.id;
+rotator[prop] = value;
+rotator.updateRotMtx();
+});
+
+/*if (getValue("automation")) {
+if (!automation.running) {
+automation.running = true;
+automate(automator);
+} // if
+
+} else {
+automation.running = false;
+} // if
+*/
+
+
+
+
+function automate (automator) {
+if (automation.running) {
+setTimeout(function _tick () {
+automator();
+if (automation.running) setTimeout(_tick, getValue("tick"));
+}, getValue("tick"));
+} // if
+} // automate
+
+function automator (value) {
+const pi = Math.PI;
+const sin = Math.sin;
+const cos = Math.cos;
+const x = audio.currentTime;
+
+vDry.gain.value = getValue("dryGain");
+vWet.gain.value = getValue("wetGain");
+
+//dryPan.pan.value = sin(x);
+wetPan.pan.value = sin(x * automation.panRate + automation.panPhase);
+f.frequency.value = automation.freqRange * sin(x * automation.freqRate + automation.freqPhase) + getValue("freq");
+f.Q.value = automation.qRange  * sin(x * automation.qRate + automation.qPhase) + getValue("q");
+d.delayTime.value = automation.delayRange * sin(x * automation.delayRate + automation.delayPhase) + getValue("delay");
+} // automator
+
+
+</script>
+
+</body>
+</html>

@@ -61,7 +61,7 @@ const binaural = new ambisonics.binDecoder(audio, 3);
 /// create nodes
 const player = audio.createMediaElementSource (audioElement);
 const input = audio.createGain();
-const output = audio.destination;
+const output = audio.createGain();
 
 const s = audio.createChannelSplitter(2);
 const m = audio.createChannelMerger(2);
@@ -96,6 +96,7 @@ xtc.connect(xWet).connect(xf).connect(xs);
 xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1);
 xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0);
 xm.connect(output);
+output.connect(audio.destination);
 
 // set values
 xDry.gain.value = 1;
@@ -174,6 +175,7 @@ const params = map[id];
 if (id === "mix") {
 xDry.gain.value = 1 - value;
 xWet.gain.value = value;
+output.gain.value = 1 + value;
 } else if (params) {
 params.forEach(p => p.value = value);
 } // if

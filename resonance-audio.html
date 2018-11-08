@@ -1,0 +1,309 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta charset="utf-8">
+<title>Resonance audio</title>
+<style>
+label {display: block;}
+</style>
+</head>
+
+<body>
+<h1>Test</h1>
+
+<div id="controls">
+<div class="player">
+<label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
+<button id="load" accesskey="l">Load</button>
+<br><audio tabindex="0" controls accesskey="a"></audio>
+</div>
+
+<div id="parameters">
+<div>
+<button id="save" accesskey="s">Save</button>
+<button id="restore" accesskey="r">Restore</button>
+</div>
+
+<div id="position">
+<div role="application" id="set">
+<label>left: <input id="left" type="text"></label>
+<label>right: <input id="right" type="text"></label>
+</div>
+
+<label>left x: <input type="range" id="x-left" value="1" min="-100" max="100" step=".1"></label>
+<label>left y: <input type="range" id="y-left" value="1" min="-100" max="100" step=".1"></label>
+<label>left z: <input type="range" id="z-left" value="1" min="-100" max="100" step=".1"></label>
+
+<label>right x: <input type="range" id="x-right" value="1" min="-100" max="100" step=".1"></label>
+<label>right y: <input type="range" id="y-right" value="1" min="-100" max="100" step=".1"></label>
+<label>right z: <input type="range" id="z-right" value="1" min="-100" max="100" step=".1"></label>
+</div>
+
+<div id="xtc">
+<label>mix: <input type="range" id="mix" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
+<label>frequency: <input type="range" id="frequency" value="1000" min="500" max="2000" step="20" accesskey="f"></label>
+<label>q: <input type="range" id="q" value="1" min="0" max="8" step="0.1" accesskey="q"></label>
+<label>delay: <input type="range" id="delay" value="0.000250" min="0" max="0.01" step="0.00025"></label>
+</div>
+
+</div><!-- #parameters -->
+</div><!-- #controls -->
+
+<div id="message" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/resonance-audio/build/resonance-audio.min.js"></script>
+<script>
+const audio = new AudioContext();
+const audioElement = document.querySelector("audio");
+const automation = {};
+
+/// create nodes
+const player = audio.createMediaElementSource (audioElement);
+const scene = new ResonanceAudio(audio);
+scene.setAmbisonicOrder(3);
+const input = audio.createGain();
+const output = audio.createGain();
+
+const s = audio.createChannelSplitter(2);
+const m = audio.createChannelMerger(2);
+
+// make a room
+
+const roomDimensions = {
+width: 3.1,
+height: 2.5,
+depth: 3.4
+}; // dimensions
+
+const roomMaterials = {
+// Room wall materials
+left: 'brick-bare',
+right: 'curtain-heavy',
+front: 'marble',
+back: 'glass-thin',
+// Room floor
+down: 'grass',
+// Room ceiling
+up: 'transparent'
+}; // materials
+
+scene.setRoomProperties(roomDimensions, roomMaterials);
+
+
+/// ambisonic connections
+
+const inLeft = scene.createSource();
+const inRight = scene.createSource();
+
+player.connect(input);
+input.connect(s);
+s.connect(inLeft.input, 0,0);
+s.connect(inRight.input, 1,0);
+
+/// xtc
+const xtc = audio.createGain();
+const xWet = audio.createGain();
+const xDry = audio.createGain();
+const l = audio.createGain();
+const r = audio.createGain();
+const xs = audio.createChannelSplitter(2);
+const xm = audio.createChannelMerger(2);
+const xf = audio.createBiquadFilter();
+const xdl = audio.createBiquadFilter();
+const xdr = audio.createBiquadFilter();
+
+scene.output.connect(xtc).connect(xDry).connect(output);
+
+xtc.connect(xWet).connect(xf).connect(xs);
+
+xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1);
+xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0);
+xm.connect(output);
+output.connect(audio.destination);
+
+// set values
+
+inLeft.setPosition(-1,0,0);
+inRight.setPosition(1,0,0);
+
+xDry.gain.value = 1;
+xWet.gain.value = 0;
+xf.type = "bandpass";
+xf.frequency.value = 1000;
+xf.Q.value = 1;
+
+l.gain.value = r.gain.value = -1
+xtc.gain.value = 2.5;
+//xdl.delayTime.value = xdr.delayTime.value = 0.000250;
+xdl.frequency.value = xdr.frequency.value = 1000;
+xdl.type = xdr.type = "allpass";
+
+
+/// initialize
+
+load();
+automation.running = false;
+
+
+
+function fixNumberInputs () {
+Array.from(document.querySelectorAll("input[type='number']"))
+.forEach(x => x.setAttribute("aria-label", x.parentElement.textContent));
+} // fixNumberInputs
+
+function load (autoPlay) {
+audioElement.src = document.querySelector("#audioFile").value;
+if (autoPlay) audioElement.play();
+} // load
+
+
+/// events
+
+document.querySelector("#load").addEventListener("click", load);
+document.querySelector("#save").addEventListener("click", save);
+document.querySelector("#restore").addEventListener("click", restore);
+
+document.querySelector("#parameters").addEventListener("keyup", (e) => {
+if (e.key.includes("Arrow") && (e.target.id === "left" || e.target.id === "right")) {
+const source = e.target.id;
+const object = (source === "left"? inLeft : inRight);
+const p = object._position;
+const s = e.target.step || .1;
+switch (e.key) {
+case "ArrowLeft": p[0] -= s; break;
+case "ArrowRight": p[0] += s; break;
+
+case "ArrowDown": p[1] -= s; break;
+case "ArrowUp": p[1] += s; break;
+
+case "d": p[2] -= s; break;
+case "u": p[2] += s; break;
+
+default: break;
+} // switch
+message(`${source} ${p.join(", ")}`);
+object.setPosition(p[0], p[1], p[2]);
+
+/*ui(`x-${source}`).value = p[0];
+ui(`y-${source}`).value = p[0];
+ui(`z-${source}`).value = p[0];
+*/
+} // if
+
+if (e.key === "0" && e.target.type && e.target.type === "range") {
+e.target.value = 0;
+e.target.dispatchEvent(new CustomEvent("change", {bubbles: true}));
+} // if
+});
+
+document.querySelector("#position").addEventListener("change", (e) => {
+inLeft.setPosition(getValue("x-left"), getValue("y-left"), getValue("z-left"));
+inRight .setPosition(getValue("x-right"), getValue("y-right"), getValue("z-right"));
+});
+
+
+document.querySelector("#xtc").addEventListener("change", (e) => {
+const id = e.target.id;
+const value = Number(e.target.value);
+const map = {
+//delay: [xdl.delayTime, xdr.delayTime],
+frequency: [xf.frequency, xdl.frequency, xdr.frequency],
+q: [xf.Q, xdl.Q, xdr.Q],
+}; // map
+const params = map[id];
+
+if (id === "mix") {
+xDry.gain.value = 1 - value;
+xWet.gain.value = value;
+output.gain.value = 1 + value;
+} else if (params) {
+params.forEach(p => p.value = value);
+} // if
+});
+
+
+/*if (getValue("automation")) {
+if (!automation.running) {
+automation.running = true;
+automate(automator);
+} // if
+
+} else {
+automation.running = false;
+} // if
+*/
+
+
+
+
+function automate (automator) {
+if (automation.running) {
+setTimeout(function _tick () {
+automator();
+if (automation.running) setTimeout(_tick, getValue("tick"));
+}, getValue("tick"));
+} // if
+} // automate
+
+function automator (value) {
+const pi = Math.PI;
+const sin = Math.sin;
+const cos = Math.cos;
+const x = audio.currentTime;
+
+vDry.gain.value = getValue("dryGain");
+vWet.gain.value = getValue("wetGain");
+
+//dryPan.pan.value = sin(x);
+wetPan.pan.value = sin(x * automation.panRate + automation.panPhase);
+f.frequency.value = automation.freqRange * sin(x * automation.freqRate + automation.freqPhase) + getValue("freq");
+f.Q.value = automation.qRange  * sin(x * automation.qRate + automation.qPhase) + getValue("q");
+d.delayTime.value = automation.delayRange * sin(x * automation.delayRate + automation.delayPhase) + getValue("delay");
+} // automator
+
+function ui (id) {return document.getElementById(id);}
+
+function getValue (id) {
+const text = ui(id);
+const value = Number(text.value);
+return Number.isNaN(value)? text : value;
+} // getValue
+
+
+function enumerateUiControls () {
+return Array.from(document.querySelectorAll("#parameters input"));
+} // enumerateUiControls
+
+function getControlIds () {
+return enumerateUiControls().map(x => x.id);
+} // getControlIds 
+
+function save () {
+localStorage.userValues = JSON.stringify(
+enumerateUiControls().map(x => [x.id, x.value])
+);
+} // save
+
+function restore () {
+try {
+JSON.parse(localStorage.userValues)
+.forEach (x => {
+const [id, value] = x;
+const element = document.getElementById(id);
+element.value = value;
+element.dispatchEvent(new CustomEvent("change", {bubbles: true}));
+}); // forEach
+} catch (e) {
+alert (`Cannot restore: ${e}.`);
+} // try
+} // restore
+
+function message (text) {
+ui("message").textContent = text;
+} // message
+
+</script>
+
+</body>
+</html>

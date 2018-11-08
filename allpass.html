@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta charset="utf-8">
+<title>Test</title>
+<style>
+label {display: block;}
+</style>
+</head>
+
+<body>
+<h1>Test</h1>
+
+<div id="controls">
+<div class="player">
+<label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
+<button id="load" accesskey="l">Load</button>
+<br><audio tabindex="0" controls accesskey="a"></audio>
+</div>
+
+<div id="parameters">
+<label>frequency: <input type="range" id="frequency" value="1000" min="500" max="2000" step="20" accesskey="f"></label>
+<label>q: <input type="range" id="q" value="1" min="0" max="8" step="0.1" accesskey="q"></label>
+</div>
+</div><!-- controls -->
+
+<script>
+const audio = new AudioContext();
+const audioElement = document.querySelector("audio");
+const automation = {};
+
+/// create nodes
+const player = audio.createMediaElementSource (audioElement);
+const f = audio.createBiquadFilter();
+f.frequency.value = 1000;
+f.Q.value=1;
+f.type="allpass";
+const s=audio.createChannelSplitter();
+const m = audio.createChannelMerger();
+
+
+player.connect(s);
+
+s.connect(f,0,0).connect(m,0,0);
+s.connect(m,1,1);
+
+m.connect(audio.destination);
+
+ui("load").addEventListener("click", load);
+
+
+ui("#parameters").addEventListener("change", (e) => {
+const map = {
+frequency: f.frequency, q: f.Q};
+map[e.target.id].value = Number(e.target.value);
+}); // change
+
+
+
+
+function ui (id) {return document.getElementById(id);}
+
+function getValue (id) {
+const text = ui(id);
+const value = Number(text.value);
+return Number.isNaN(value)? text : value;
+} // getValue
+
+
+function enumerateUiControls () {
+return Array.from(document.querySelectorAll("#parameters input"));
+} // enumerateUiControls
+
+function getControlIds () {
+return enumerateUiControls().map(x => x.id);
+} // getControlIds 
+
+function load (autoPlay) {
+audioElement.src = document.querySelector("#audioFile").value;
+if (autoPlay) audioElement.play();
+} // load
+
+</script>
+
+</body>
+</html>

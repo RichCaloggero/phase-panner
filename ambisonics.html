@@ -14,6 +14,7 @@ label {display: block;}
 
 <div id="controls">
 <div class="player">
+<h2>Audio Player</h2>
 <label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
 <button id="load" accesskey="l">Load</button>
 <br><audio tabindex="0" controls accesskey="a"></audio>
@@ -21,27 +22,36 @@ label {display: block;}
 
 <div id="parameters">
 <div>
+<h2>Save and restore</h2>
 <button id="save" accesskey="s">Save</button>
 <button id="restore" accesskey="r">Restore</button>
 </div>
 
 <div id="position">
+<h2>Position</h2>
 <label>azimuth: <input type="range" id="azim" min="-180" max="180" accesskey="a"></label>
 <label>elevation: <input type="range" id="elev" min="-90" max="90" accesskey="e"></label>
 </div>
 
 <div id="rotation">
+<h2>Rotation</h2>
 <label>roll: <input type="range" id="roll" min="-90" max="90" accesskey="r"></label>
 <label>pitch: <input type="range" id="pitch" min="-90" max="90" accesskey="p"></label>
 <label>yaw: <input type="range" id="yaw" min="-90" max="90" accesskey="y"></label>
 </div>
 
 <div id="xtc">
-<label>mix: <input type="range" id="mix" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
-<label>frequency: <input type="range" id="frequency" value="1000" min="500" max="2000" step="20" accesskey="f"></label>
+<h2>XTC</h2>
+
+<label>binaural / unprocessed mix: <input type="range" id="mix-binaural-unprocessed" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
+<label>xtc  mix: <input type="range" id="mix-xtc" value="0" min="0" max="1" step="0.1"></label>
+<label>frequency: <input type="range" id="frequency" value="1000" min="400" max="6000" step="20" accesskey="f"></label>
 <label>q: <input type="range" id="q" value="1" min="0" max="8" step="0.1" accesskey="q"></label>
 <label>delay: <input type="range" id="delay" value="0.000250" min="0" max="0.01" step="0.00025"></label>
-</div>
+<label>makeup filter gain: <input type="range" id="makeupFilterGain" value="1" min="0" max="3" step="0.1" accesskey="+"></label>
+<label>makeup filter frequency: <input type="range" id="makeupFrequency" value="1000" min="0" max="20000" step="20"></label>
+<label>makeup filter q: <input type="range" id="makeupQ" value="1" min="0" max="10" step="0.1"></label>
+</div><!-- #xtc -->
 
 </div><!-- #parameters -->
 </div><!-- #controls -->
@@ -56,29 +66,36 @@ const automation = {};
 const inLeft = new ambisonics.monoEncoder(audio, 3);
 const inRight = new ambisonics.monoEncoder(audio, 3);
 const rotator = new ambisonics.sceneRotator(audio, 3);
-const binaural = new ambisonics.binDecoder(audio, 3);
+const binauralProcessor = new ambisonics.binDecoder(audio, 3);
 
 /// create nodes
 const player = audio.createMediaElementSource (audioElement);
-const input = audio.createGain();
-const output = audio.createGain();
+const binauralDry = audio.createGain();
+const binauralWet = audio.createGain();
+const binauralIn = audio.createGain();
+const binauralOut = audio.createGain();
 
 const s = audio.createChannelSplitter(2);
 const m = audio.createChannelMerger(2);
 
-/// ambisonic connections
 
-player.connect(input);
-input.connect(s);
+/// ambisonic connections
+player.connect(binauralIn);
+
+binauralIn.connect(binauralDry).connect(binauralOut);
+
+binauralIn.connect(s);
 s.connect(inLeft.in,0);
 s.connect(inRight.in, 1);
 
 inLeft.out.connect(rotator.in);
 inRight.out.connect(rotator.in);
-rotator.out.connect(binaural.in);
+rotator.out.connect(binauralProcessor.in);
+binauralProcessor.out.connect(binauralWet).connect(binauralOut);
 
 /// xtc
-const xtc = audio.createGain();
+const xtcIn = audio.createGain();
+const xtcOut = audio.createGain();
 const xWet = audio.createGain();
 const xDry = audio.createGain();
 const l = audio.createGain();
@@ -88,34 +105,31 @@ const xm = audio.createChannelMerger(2);
 const xf = audio.createBiquadFilter();
 const xdl = audio.createBiquadFilter();
 const xdr = audio.createBiquadFilter();
+const xMakeupFilter = audio.createBiquadFilter();
 
-binaural.out.connect(xtc).connect(xDry).connect(output);
+// xtc connections
 
-xtc.connect(xWet).connect(xf).connect(xs);
+binauralOut.connect(xtcIn);
+
+xtcIn.connect(xDry).connect(xtcOut);
+xtcIn.connect(xf).connect(xs);
 
 xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1);
 xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0);
-xm.connect(output);
-output.connect(audio.destination);
+xm.connect(xMakeupFilter).connect(xtcOut);
+xtcOut.connect(audio.destination);
 
 // set values
-xDry.gain.value = 1;
-xWet.gain.value = 0;
 xf.type = "bandpass";
-xf.frequency.value = 1000;
-xf.Q.value = 1;
-
 l.gain.value = r.gain.value = -1
-xtc.gain.value = 2.5;
-//xdl.delayTime.value = xdr.delayTime.value = 0.000250;
-xdl.frequency.value = xdr.frequency.value = 1000;
-xdl.type = xdr.type = "allpass";
+xdl.type = xdr.type = xMakeupFilter.type = "allpass";
 
 
 /// initialize
 const HOA3loader = new ambisonics.HOAloader(audio, 3, "HOA3_IRC_1008_virtual.wav",
-data => binaural.updateFilters(data));
+data => binauralProcessor.updateFilters(data));
 HOA3loader.load();
+updateXtc();
 
 load();
 automation.running = false;
@@ -162,39 +176,59 @@ rotator[prop] = value;
 rotator.updateRotMtx();
 });
 
-document.querySelector("#xtc").addEventListener("change", (e) => {
-const id = e.target.id;
-const value = Number(e.target.value);
+document.querySelector("#xtc").addEventListener("change", (e) => updateXtc(e.target));
+
+function updateXtc (element) {
+if (element) {
+update(element.id);
+} else {
+Array.from(document.querySelector("#xtc input"))
+.forEach(element => update(element.id));
+} // if
+
+function update (id) {
+const value = id.value;
+
 const map = {
 //delay: [xdl.delayTime, xdr.delayTime],
 frequency: [xf.frequency, xdl.frequency, xdr.frequency],
 q: [xf.Q, xdl.Q, xdr.Q],
-}; // map
-const params = map[id];
+makeupFilterGain: [xMakeupFilter.gain],
+makeupFrequency: [xMakeupFilter.frequency],
+makeupQ: [xMakeupFilter	.Q],
 
-if (id === "mix") {
+"mix-binaural-unprocessed": function (id, value) {
+binauralDry.gain.value = 1 - value;
+binauralWet.gain.value = value;
+},
+
+"mix-xtc": function (id, value) {
 xDry.gain.value = 1 - value;
 xWet.gain.value = value;
-output.gain.value = 1 + value;
-} else if (params) {
-params.forEach(p => p.value = value);
+xMakeupFilter.gain.value = 1 + value;
+} // mix-xtc
+}; // map
+
+run(map[id], id, getValue(id));
+
+function run ( it, id, value) {
+console.log("running ", typeof(it), id, value);
+if (it instanceof Function) {
+return it(id, value);
+
+} else if (it instanceof Object && "value" in it) {
+console.log("run: assigning ", it, value);
+it.value = value;
+
+} else if (it instanceof Array) {
+it.forEach(object => run(object, id, value));
 } // if
-});
+} // run
+} // update
+} // xtcUpdate
 
 
-/*if (getValue("automation")) {
-if (!automation.running) {
-automation.running = true;
-automate(automator);
-} // if
-
-} else {
-automation.running = false;
-} // if
-*/
-
-
-
+/// automation
 
 function automate (automator) {
 if (automation.running) {
@@ -248,6 +282,15 @@ element.dispatchEvent(new CustomEvent("change", {bubbles: true}));
 alert (`Cannot restore: ${e}.`);
 } // try
 } // restore
+
+function update (element) {
+const elements = (! element)?
+Array.from(document.querySelectorAll("#xtc input"))
+: [element];
+
+console.log("updating ", elements.length);
+elements.forEach (element => element.dispatchEvent(new CustomEvent("change", {bubbles: true})));
+} // update
 
 </script>
 

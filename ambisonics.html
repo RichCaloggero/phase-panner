@@ -56,6 +56,7 @@ label {display: block;}
 </div><!-- #parameters -->
 </div><!-- #controls -->
 
+<div id="message" aria-live="polite"></div>
 
 <script src="ambisonics.umd.js"></script>
 <script src="ui.js"></script>
@@ -74,24 +75,22 @@ const binauralDry = audio.createGain();
 const binauralWet = audio.createGain();
 const binauralIn = audio.createGain();
 const binauralOut = audio.createGain();
-
 const s = audio.createChannelSplitter(2);
 const m = audio.createChannelMerger(2);
 
 
 /// ambisonic connections
 player.connect(binauralIn);
-
 binauralIn.connect(binauralDry).connect(binauralOut);
+binauralIn.connect(binauralWet).connect(s);
 
-binauralIn.connect(s);
 s.connect(inLeft.in,0);
 s.connect(inRight.in, 1);
 
 inLeft.out.connect(rotator.in);
 inRight.out.connect(rotator.in);
 rotator.out.connect(binauralProcessor.in);
-binauralProcessor.out.connect(binauralWet).connect(binauralOut);
+binauralProcessor.out.connect(binauralOut);
 
 /// xtc
 const xtcIn = audio.createGain();
@@ -105,24 +104,27 @@ const xm = audio.createChannelMerger(2);
 const xf = audio.createBiquadFilter();
 const xdl = audio.createBiquadFilter();
 const xdr = audio.createBiquadFilter();
+const xDryDelay = audio.createDelay();
 const xMakeupFilter = audio.createBiquadFilter();
 
 // xtc connections
 
 binauralOut.connect(xtcIn);
-
-xtcIn.connect(xDry).connect(xtcOut);
-xtcIn.connect(xf).connect(xs);
+xtcIn.connect(xDry).connect(xDryDelay).connect(xtcOut);
+xtcIn.connect(xWet).connect(xf).connect(xs);
 
 xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1);
 xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0);
+
 xm.connect(xMakeupFilter).connect(xtcOut);
+
 xtcOut.connect(audio.destination);
 
 // set values
 xf.type = "bandpass";
+xdl.type = xdr.type = "allpass";
+xMakeupFilter.type = "lowshelf";
 l.gain.value = r.gain.value = -1
-xdl.type = xdr.type = xMakeupFilter.type = "allpass";
 
 
 /// initialize
@@ -190,7 +192,7 @@ function update (id) {
 const value = id.value;
 
 const map = {
-//delay: [xdl.delayTime, xdr.delayTime],
+delay: [xDryDelay.delayTime],
 frequency: [xf.frequency, xdl.frequency, xdr.frequency],
 q: [xf.Q, xdl.Q, xdr.Q],
 makeupFilterGain: [xMakeupFilter.gain],
@@ -200,12 +202,15 @@ makeupQ: [xMakeupFilter	.Q],
 "mix-binaural-unprocessed": function (id, value) {
 binauralDry.gain.value = 1 - value;
 binauralWet.gain.value = value;
+binauralOut.gain.value = 1 + (2 * binauralWet.gain.value);
 },
 
 "mix-xtc": function (id, value) {
 xDry.gain.value = 1 - value;
 xWet.gain.value = value;
-xMakeupFilter.gain.value = 1 + value;
+xtcOut.gain.value = 1 + (2 * binauralWet.gain.value);
+xMakeupFilter.gain.value = 2 * value;
+message("mix-xtc: ", Math.round(xDry.gain.value,1), Math.round(xWet.gain.value, 1), Math.round(xMakeupFilter.gain.value, 1));
 } // mix-xtc
 }; // map
 
@@ -291,6 +296,15 @@ Array.from(document.querySelectorAll("#xtc input"))
 console.log("updating ", elements.length);
 elements.forEach (element => element.dispatchEvent(new CustomEvent("change", {bubbles: true})));
 } // update
+
+function message (...args) {
+_message(args.join(", "));
+
+function _message (text) {
+document.querySelector("#message").textContent = text;
+return text;
+} // _message
+} // message
 
 </script>
 

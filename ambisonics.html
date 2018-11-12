@@ -45,11 +45,11 @@ label {display: block;}
 
 <label>binaural / unprocessed mix: <input type="range" id="mix-binaural-unprocessed" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
 <label>xtc  mix: <input type="range" id="mix-xtc" value="0" min="0" max="1" step="0.1"></label>
-<label>frequency: <input type="range" id="frequency" value="1000" min="-6000" max="6000" step="20" accesskey="f"></label>
+<label>frequency: <input type="range" id="frequency" value="1000" min="40" max="10000" step="20" accesskey="f"></label>
 <label>q: <input type="range" id="q" value="1" min="0" max="8" step="0.1" accesskey="q"></label>
 <label>delay: <input type="range" id="delay" value="0.000250" min="0" max="0.01" step="0.00025"></label>
 <label>makeup filter gain: <input type="range" id="makeupFilterGain" value="1" min="0" max="3" step="0.1" accesskey="+"></label>
-<label>makeup filter frequency: <input type="range" id="makeupFrequency" value="1000" min="0" max="20000" step="20"></label>
+<label>makeup filter frequency: <input type="range" id="makeupFrequency" value="1000" min="40" max="10000" step="20"></label>
 <label>makeup filter q: <input type="range" id="makeupQ" value="1" min="0" max="10" step="0.1"></label>
 </div><!-- #xtc -->
 
@@ -130,7 +130,8 @@ xtcOut.connect(audio.destination);
 xf.type = "bandpass";
 xdl.type = xdr.type = "allpass";
 xMakeupFilter.type = "lowshelf";
-l.gain.value = r.gain.value = -1
+l.gain.value = -1
+r.gain.value = 1;
 
 
 /// initialize
@@ -167,65 +168,36 @@ e.target.dispatchEvent(new CustomEvent("change", {bubbles: true}));
 } // if
 });
 
-document.querySelector("#position").addEventListener("change", (e) => {
-const left = Number(e.target.value);
-const prop = e.target.id;
-inLeft[prop] = left;
-inRight[prop] = -1*left;
-inLeft.updateGains();
-inRight.updateGains();
-});
+document.querySelector("#controls").addEventListener("change", (e) => update(e.target.id, getValue(e.target.id)));
 
-document.querySelector("#rotation").addEventListener("change", (e) => {
-const value = Number(e.target.value);
-const prop = e.target.id;
-rotator[prop] = value;
-rotator.updateRotMtx();
-});
-
-document.querySelector("#xtc").addEventListener("change", (e) => updateXtc(e.target));
 
 function updateXtc (element) {
 if (element) {
-update(element.id, getValue(element));
+update(element.id, getValue(element.id));
 } else {
 Array.from(document.querySelector("#xtc input"))
-.forEach(element => update(element.id, getValue(element)));
+.forEach(element => update(element.id, getValue(element.id)));
 } // if
 } // updateXtc
 
 function updateAll () {
-enumerateUiControls().forEach(element => update(element));
+enumerateUiControls().forEach(element => update(element.id, getValue(element.id)));
 } // updateAll
 
 function update (id, value) {
-if (! id) return;
+console.log(`update: ${id}, ${value}`);
+if (!id) return;
 
-return run(map[id], id, getValue(id));
-
-function run ( it, id, value) {
-if (! it) return;
-//console.log("running ", typeof(it), id, value);
-if (it instanceof Function) {
-return it(id, value);
-
-} else if (it instanceof Object && "value" in it) {
-//console.log("run: assigning ", it, value);
-it.value = value;
-
-else if (it anstanceof Object && id in it) {
-it[id] = value;
-} else if (it instanceof Array) {
-it.forEach(object => run(object, id, value));
-} // if
-} // run
-
-// map
-
-var map = {
+const map = {
 depth: automation,
 rate: automation,
 phase: automation,
+
+azim: updatePosition,
+elev: updatePosition,
+roll: updateRotator,
+pitch: updateRotator,
+yaw: updateRotator,
 
 delay: [xDryDelay.delayTime],
 frequency: [xf.frequency, xdl.frequency, xdr.frequency],
@@ -248,6 +220,51 @@ xMakeupFilter.gain.value = 2 * value;
 xtcOut.gain.value = 1 + (2.5 * value);
 } // mix-xtc
 }; // map
+
+return run(map[id], id, value);
+
+function run (it, id, value) {
+//console.log(`it: ${it}`);
+if (!it) {
+console.log(`run: ${id} not found`);
+return;
+
+} else if (it instanceof Array) {
+//console.log(`run: processing array of length ${it.length}`);
+it.forEach(object => run(object, id, value));
+
+} else if (it instanceof Function) {
+//console.log(`run: calling ${it}(${id}, ${value});`);
+return it(id, value);
+
+} else if (it instanceof Object && "value" in it) {
+//console.log(`run: assigning ${it}.value = ${value}`);
+it.value = value;
+
+}else if (it instanceof Object && id in it) {
+//console.log(`run: assigning ${it}.${id} = ${value}`);
+it[id] = value;
+
+ } else {
+console.log(`run: cannot process ${id}, ${value}`);
+return;
+} // if
+} // run
+
+function updatePosition (id, value) {
+const left = Number(value);
+const prop = id;
+inLeft[prop] = left;
+inRight[prop] = -1*left;
+inLeft.updateGains();
+inRight.updateGains();
+} // updatePosition
+
+function updateRotator (id, value) {
+const prop = id;
+rotator[prop] = value;
+rotator.updateRotMtx();
+} // updateRotator
 
 } // update
 

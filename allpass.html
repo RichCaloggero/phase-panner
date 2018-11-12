@@ -50,7 +50,7 @@ m.connect(audio.destination);
 ui("load").addEventListener("click", load);
 
 
-ui("#parameters").addEventListener("change", (e) => {
+ui("parameters").addEventListener("change", (e) => {
 const map = {
 frequency: f.frequency, q: f.Q};
 map[e.target.id].value = Number(e.target.value);

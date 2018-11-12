@@ -4,6 +4,7 @@ const element = elementOrId instanceof HTMLElement? elementOrId
 if (!element) return undefined;
 
 if (element.getAttribute("type") === "checkbox") return element.checked;
+else if (element.type === "text") return element.value;
 
 const value = element.value;
 return Number.isNaN(Number(value))?
@@ -11,7 +12,7 @@ value
 : Number(value);
 } // getValue
 
-function setValue (element) {
+function setValue (element, noChangeEvent) {
 element.value = value;
 if (noChangeEvent) return;
 else signal(element);
@@ -19,12 +20,9 @@ else signal(element);
 
 
 function signal (element, eventName = "change") {
-const elements = (! element)?
-enumerateUiControls()
-: [element];
-console.log("updating ", elements.length);
+console.log(`signal: ${element}`);
 
-elements.forEach (element => element.dispatchEvent(new CustomEvent(eventName, {bubbles: true})));
+element.dispatchEvent(new CustomEvent(eventName, {bubbles: true}));
 } // signal
 
 
@@ -40,7 +38,7 @@ enumerateUiControls()
 
 
 function enumerateUiControls () {
-return Array.from(document.querySelectorAll("#controls"));
+return Array.from(document.querySelectorAll("#controls input"));
 } // enumerateUiControls
 
 function getControlIds () {

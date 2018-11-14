@@ -20,11 +20,11 @@ label {display: block;}
 </div>
 
 <div id="parameters">
-<label>frequency: <input type="range" id="frequency" value="1000" min="500" max="2000" step="20" accesskey="f"></label>
-<label>q: <input type="range" id="q" value="1" min="0" max="8" step="0.1" accesskey="q"></label>
+<label>delay: <input type="range" id="delay" value="1" min="0" max="1" step="0.000010" accesskey="d"></label>
 </div>
 </div><!-- controls -->
 
+<script src="delay.js"></script>
 <script>
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
@@ -32,17 +32,16 @@ const automation = {};
 
 /// create nodes
 const player = audio.createMediaElementSource (audioElement);
-const f = audio.createBiquadFilter();
-f.frequency.value = 1000;
-f.Q.value=1;
-f.type="allpass";
 const s=audio.createChannelSplitter();
 const m = audio.createChannelMerger();
+let fd = audio.createScriptProcessor (4096,1,1);
+fd.onaudioprocess = createProcessDelay(.003);
+
 
 
 player.connect(s);
 
-s.connect(f,0,0).connect(m,0,0);
+s.connect(fd,0,0).connect(m,0,0);
 s.connect(m,1,1);
 
 m.connect(audio.destination);
@@ -51,9 +50,15 @@ ui("load").addEventListener("click", load);
 
 
 ui("parameters").addEventListener("change", (e) => {
-const map = {
-frequency: f.frequency, q: f.Q};
-map[e.target.id].value = Number(e.target.value);
+if (e.target.id = "delay") {
+fd.onaudioprocess = null;
+fd = null;
+setTimeout(() => {
+fd = audio.createScriptProcessor(4096,1,1);
+fd.onaudioprocess = createProcessDelay(getValue("delay"));
+s.connect(fd,0,0).connect(m,0,0);
+}, 1000);
+} // if
 }); // change
 
 
@@ -80,6 +85,27 @@ function load (autoPlay) {
 audioElement.src = document.querySelector("#audioFile").value;
 if (autoPlay) audioElement.play();
 } // load
+
+function createProcessDelay (t) {
+const fdProcessor = new FractionalDelay(audio.sampleRate);
+fdProcessor.setDelay(t);
+
+function processDelay (audioProcessingEvent) {
+const inputBuffer = audioProcessingEvent.inputBuffer;
+const outputBuffer = audioProcessingEvent.outputBuffer;
+
+// Loop through the output channels (in this case there is only one)
+for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
+const inputData = inputBuffer.getChannelData(channel);
+const outputData = outputBuffer.getChannelData(channel);
+const fdOut = fdProcessor.process(inputData);
+fdOut.forEach((data, i) => outputData[i] = data);
+} // for
+} processDelay
+
+return processDelay;
+} // createProcessDelay
+
 
 </script>
 

@@ -49,9 +49,7 @@ label {display: block;}
 <label>type: <input type="text" id="type" value="bandpass"t"></label>
 <label>frequency: <input type="range" id="frequency" value="1500" min="40" max="10000" step="20" accesskey="f"></label>
 <label>q: <input type="range" id="q" value=".3" min="0" max="8" step="0.1" accesskey="q"></label>
-<label>delay: <input type="range" id="delay" value="0.000050" min="0" max="0.01" step="0.000020" accesskey="d"></label>
-<label>delay filter frequency: <input type="range" id="delayFilterFrequency" value="1000" min="40" max="10000" step="20"></label>
-<label>delay filter q: <input type="range" id="delayFilterQ" value="1" min="0" max="10" step="0.1"></label>
+<label>delay: <input type="range" id="delay" value="0.000020" min="0" max="1" step="0.000020" accesskey="d"></label>
 </div><!-- #xtc -->
 
 </div><!-- #parameters -->
@@ -59,6 +57,7 @@ label {display: block;}
 
 <div id="message" aria-live="polite"></div>
 
+<script src="delay.js"></script>
 <script src="ambisonics.umd.js"></script>
 <script src="ui.js"></script>
 <script>
@@ -68,6 +67,7 @@ const inLeft = new ambisonics.monoEncoder(audio, 3);
 const inRight = new ambisonics.monoEncoder(audio, 3);
 const rotator = new ambisonics.sceneRotator(audio, 3);
 const binauralProcessor = new ambisonics.binDecoder(audio, 3);
+const fdProcessor = new FractionalDelay(audio.sampleRate);
 const automation = {running: false};
 
 /// create nodes
@@ -200,7 +200,10 @@ roll: updateRotator,
 pitch: updateRotator,
 yaw: updateRotator,
 
-delay: [xdl.delayTime, xdr.delayTime],
+delay: function (id, value) {
+fdProcessor.setDelay(Number(value));
+}, // delay
+
 feedback: [xLFeedback.gain, xRFeedback.gain],
 type: [xf],
 frequency: [xf.frequency],
@@ -319,6 +322,21 @@ document.querySelector("#message").textContent = text;
 return text;
 } // _message
 } // message
+
+const fd = audio.createScriptProcessor (4096,1,1);
+fd.onaudioprocess = function(audioProcessingEvent) {
+const inputBuffer = audioProcessingEvent.inputBuffer;
+const outputBuffer = audioProcessingEvent.outputBuffer;
+
+// Loop through the output channels (in this case there is only one)
+for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
+const inputData = inputBuffer.getChannelData(channel);
+const outputData = outputBuffer.getChannelData(channel);
+const fdOut = fdProcessor.process(inputData);
+fdOut.forEach((data, i) => outputData[i] = data);
+}
+}
+
 
 </script>
 

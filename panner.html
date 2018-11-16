@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta charset="utf-8">
-<title>Ambisonics</title>
+<title>pannernode test</title>
 <style>
 label {display: block;}
 </style>
@@ -29,15 +29,20 @@ label {display: block;}
 
 <div id="position">
 <h2>Position</h2>
-<label>azimuth: <input type="range" id="azim" min="-180" max="180" accesskey="a"></label>
-<label>elevation: <input type="range" id="elev" min="-90" max="90" accesskey="e"></label>
+<label>panning model: <input type="text" id="panningModel" value="HRTF"></label>
+<label>angle: <input type="range" id="angle" min="0" step="0.02" accesskey="a"></label>
+<label>radius: <input type="range" id="radius" min="-90" max="90" step="0.1"></label>
 </div>
 
-<div id="rotation">
-<h2>Rotation</h2>
-<label>roll: <input type="range" id="roll" min="-90" max="90" accesskey="r"></label>
-<label>pitch: <input type="range" id="pitch" min="-90" max="90" accesskey="p"></label>
-<label>yaw: <input type="range" id="yaw" min="-90" max="90" accesskey="y"></label>
+<div id="automation">
+<h2>Automation</h2>
+
+<label>enable automation: <input id="enableAutomation" type="checkbox" checked></label>
+<label>automate parameter: <select id="parameterName" accesskey="p"></select></label>
+<label>function: <input type="text" id="function"></label>
+<label>enable <input type="checkbox" id="automate"></label>
+<label>tick: <input type="range" id="tick" value="0.2" min=".0.02" max="0.5" step="0.01"></label>
+
 </div>
 
 <div id="xtc">
@@ -45,7 +50,7 @@ label {display: block;}
 
 <label>binaural / unprocessed mix: <input type="range" id="mix-binaural-unprocessed" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
 <label>xtc  mix: <input type="range" id="mix-xtc" value="0" min="0" max="1" step="0.1"></label>
-<label>feedback: <input type="range" id="feedback" value="-0.6" min="-1" max="1" step="0.1" accesskey="b"></label>
+<label>feedback: <input type="range" id="feedback" value="0" min="-1" max="1" step="0.1" accesskey="b"></label>
 <label>type: <input type="text" id="type" value="bandpass"t"></label>
 <label>frequency: <input type="range" id="frequency" value="1500" min="40" max="10000" step="20" accesskey="f"></label>
 <label>q: <input type="range" id="q" value=".3" min="0" max="8" step="0.1" accesskey="q"></label>
@@ -63,12 +68,11 @@ label {display: block;}
 <script>
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
-const inLeft = new ambisonics.monoEncoder(audio, 3);
-const inRight = new ambisonics.monoEncoder(audio, 3);
-const rotator = new ambisonics.sceneRotator(audio, 3);
-const binauralProcessor = new ambisonics.binDecoder(audio, 3);
+
+const leftPanner = audio.createPanner(), rightPanner = audio.createPanner();
+
 const fdProcessor = new FractionalDelay(audio.sampleRate, 1.0);
-const automation = {running: false};
+const automation = {};
 
 /// create nodes
 const player = audio.createMediaElementSource (audioElement);
@@ -85,13 +89,8 @@ player.connect(binauralIn);
 binauralIn.connect(binauralDry);
 binauralIn.connect(s);
 
-s.connect(inLeft.in,0);
-s.connect(inRight.in, 1);
-
-inLeft.out.connect(rotator.in);
-inRight.out.connect(rotator.in);
-rotator.out.connect(binauralProcessor.in);
-binauralProcessor.out.connect(binauralWet);
+s.connect(leftPanner, 0).connect(binauralWet);
+s.connect(rightPanner, 1).connect(binauralWet);
 
 binauralDry.connect(binauralOut);
 binauralWet.connect(binauralOut);
@@ -122,8 +121,8 @@ xtcIn.connect(xf).connect(xs);
 xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1);
 xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0);
 
-xdl.connect(xLFeedback).connect(inRight.in);
-xdr.connect(xRFeedback).connect(inLeft.in);
+xdl.connect(xLFeedback).connect(rightPanner);
+xdr.connect(xRFeedback).connect(leftPanner);
 
 xm.connect(xWet);
 
@@ -132,13 +131,12 @@ xWet.connect(xtcOut);
 xtcOut.connect(audio.destination);
 
 // set values
+leftPanner.panningModel = rightPanner.panningModel = "HRTF";
 l.gain.value = r.gain.value = -1;
 
 
 /// initialize
-const HOA3loader = new ambisonics.HOAloader(audio, 3, "HOA3_IRC_1008_virtual.wav",
-data => binauralProcessor.updateFilters(data));
-HOA3loader.load();
+initializeAutomation();
 updateAll ();
 
 load();
@@ -172,47 +170,63 @@ e.target.dispatchEvent(new CustomEvent("change", {bubbles: true}));
 document.querySelector("#controls").addEventListener("change", (e) => update(e.target.id, getValue(e.target.id)));
 
 
-function updateXtc (element) {
-if (element) {
-update(element.id, getValue(element.id));
-} else {
-Array.from(document.querySelector("#xtc input"))
-.forEach(element => update(element.id, getValue(element.id)));
-} // if
-} // updateXtc
 
 function updateAll () {
 enumerateUiControls().forEach(element => update(element.id, getValue(element.id)));
 } // updateAll
 
 function update (id, value) {
-console.log(`update: ${id}, ${value}`);
+//console.log(`update: ${id}, ${value}`);
 if (!id) return;
 
 const map = {
-depth: automation,
-rate: automation,
-phase: automation,
-
-azim: updatePosition,
-elev: updatePosition,
-roll: updateRotator,
-pitch: updateRotator,
-yaw: updateRotator,
-
+angle: updatePosition,
+radius: updatePosition,
 delay: function (id, value) {
 fdProcessor.setDelay(Number(value));
 }, // delay
+
+enableAutomation: function (id, value) {
+automation.enabled = value;
+if (automation.enabled) {
+console.log("starting automation...");
+runAutomation(automation, automator);
+} // if
+}, // enableAutomation
+
+parameterName: function (id, value) {
+const parameter = automation.parameters.get(value);
+console.log("selectParameter: ", id, value, parameter);
+setValue(ui("automate"), parameter.enabled, "no change");
+setValue(ui("function"), parameter.functionText, "no change");
+}, // parameterName
+
+function: function (id, value) {
+const parameterName = getValue("parameterName");
+const parameter = automation.parameters.get(parameterName);
+parameter.functionText = value;
+if (value) parameter.function = compile(value);
+}, // function
+
+automate: function (id, value) {
+const parameterName = getValue("parameterName");
+const parameter = automation.parameters.get(parameterName);
+parameter.enabled = value;
+console.log("automate: ", value, parameter);
+}, // automate
+
+tick: {automation},
 
 feedback: [xLFeedback.gain, xRFeedback.gain],
 type: [xf],
 frequency: [xf.frequency],
 q: [xf.Q],
+panningModel: [leftPanner, rightPanner],
 
 "mix-binaural-unprocessed": function (id, value) {
 binauralDry.gain.value = 1 - value;
 binauralWet.gain.value = value;
-binauralOut.gain.value = 1 + (2 * binauralWet.gain.value);
+binauralOut.gain.value = 1 + .3 * value;
 },
 
 "mix-xtc": function (id, value) {
@@ -239,27 +253,34 @@ it.forEach(object => run(object, id, value));
 return it(id, value);
 
 } else if (it instanceof Object && "value" in it) {
-console.log(`run: assigning ${it}.value = ${value}`);
+//console.log(`run: assigning ${it}.value = ${value}`);
 it.value = value;
 
 }else if (it instanceof Object && id in it) {
-console.log(`run: assigning ${it}.${id} = ${value}`);
+//console.log(`run: assigning ${it}.${id} = ${value}`);
 it[id] = value;
 
- } else {
+} else {
 console.log(`run: cannot process ${id}, ${value}`);
 return;
 } // if
 } // run
 
 function updatePosition (id, value) {
-const left = Number(value);
-const prop = id;
-inLeft[prop] = left;
-inRight[prop] = -1*left;
-inLeft.updateGains();
-inRight.updateGains();
+const a = id === "angle"? value : getValue("angle");
+const r = id === "radius"? value : getValue("radius");
+setPosition(a, r);
 } // updatePosition
+
+function setPosition (a, r) {
+leftPanner.positionX.value = r*Math.cos(a);
+leftPanner.positionY.value = r*Math.sin(a);
+leftPanner.positionZ.value = r*Math.cos(a+a/3+a/6+a/9);
+
+rightPanner.positionX.value = r*Math.sin(-1*a);
+rightPanner.positionY.value = r*Math.cos(-1*a);
+rightPanner.positionZ.value = r*Math.sin(-1*a-a/3+a/6-a/9);
+} // setPosition
 
 function updateRotator (id, value) {
 const prop = id;
@@ -272,23 +293,35 @@ rotator.updateRotMtx();
 
 /// automation
 
-function automate (automator) {
-if (automation.running) {
-setTimeout(function _tick () {
-automator(audio.currentTime, automation);
-if (automation.running) setTimeout(_tick, getValue("tick"));
-}, getValue("tick"));
-} // if
-} // automate
+function runAutomation (automation, automator) {
+if (automation.enabled) {
+automation.tickCount += 1;
+automation.parameters.forEach(parameter => automator(audio.currentTime, parameter));
+setTimeout(() => runAutomation(automation, automator), 1000 * automation.tick);
 
-function automator (t, automation) {
-const pi = Math.PI;
-const sin = Math.sin;
-const cos = Math.cos;
-//const phase = Math.random()*pi;
-const func = t => getValue("depth") * sin(t + getValue("phase"));
+} else {
+console.log("automation stopped at tick  ", automation.tickCount);
+} } // enabled
+// runAutomation
 
+function automator (t, parameter) {
+if (parameter && parameter.enabled) {
+parameter.tickCount += 1;
+//console.log("automator: ", parameter);
 
+try {
+update(parameter.name, parameter.function(t));
+} catch (e) {
+message(e);
+update("parameterName", parameter.name);
+ui("automate").checked = false;
+parameter.enabled = false;
+} // catch
+
+} else if (parameter.tickCount > 0) {
+console.log ("stopping automation of ", parameter.name, " at tick ", parameter.tickCount);
+parameter.tickCount = 0;
+} // if enabled
 } // automator
 
 
@@ -323,21 +356,61 @@ return text;
 } // _message
 } // message
 
-const fd = audio.createScriptProcessor (4096,1,1);
-fd.onaudioprocess = function(audioProcessingEvent) {
-const inputBuffer = audioProcessingEvent.inputBuffer;
-const outputBuffer = audioProcessingEvent.outputBuffer;
+function initializeAutomation () {
+console.log("initializing automation...");
+automation.defaultParameter = {
+name: "",
+enabled: false,
+tickCount: 0,
+function: null,
+functionText: ""
+};
 
-// Loop through the output channels (in this case there is only one)
-for (var channel = 0; channel < outputBuffer.numberOfChannels; channel++) {
-const inputData = inputBuffer.getChannelData(channel);
-const outputData = outputBuffer.getChannelData(channel);
-const fdOut = fdProcessor.process(inputData);
-fdOut.forEach((data, i) => outputData[i] = data);
-}
-}
+automation.enabled = false;
+automation.tickCount = 0;
+automation.tick = 0.2; // seconds
+automation.parameters = new Map();
 
-toCartesian(r, a) {
+enumerateNumericControls().forEach(element => {
+automation.parameters.set(element.id, 
+Object.assign({}, automation.defaultParameter, {name: element.id}));
+
+ui("parameterName").add(
+createOption(element.id, element.id)
+); // add
+}); // forEach
+
+runAutomation(automation, automator);
+
+
+function createOption (text) {
+const option = document.createElement("option")
+option.textContent = text;
+option.value = text;
+return option;
+} // createOption 
+} // initializeAutomation
+
+function compile(text) {
+try {
+f = _compile(text);
+f(0); // to be sure it was compiled correctly
+return f;
+} catch (e) {
+message (`invalid function, ${e}`);
+return;
+} // catch
+
+function _compile (body, parameters = "x") {
+if (! body.includes("return")) body = `return (${body})`;
+
+return new Function (parameters,
+`with (Math) {${body};}`);
+} // _compile
+} // compile
+
+
+function toCartesian(r, a) {
 return [r*Math.cos(a), r*Math.sin(a)];
 } // toCartesian
 </script>

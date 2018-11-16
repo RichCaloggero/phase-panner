@@ -1,0 +1,11 @@
+angle: sin(3*x)
+radius: cos(x)
+
+mix = 0.3
+xtcMix = 0.3
+feedback = -0.3
+
+type = bandpass
+freq = 1500
+q = 0.3
+delay = 0.000040

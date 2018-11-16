@@ -16,10 +16,9 @@ value
 } // if
 } // getValue
 
-function setValue (element, value, noChangeEvent) {
+function setValue (element, value, eventName) {
 element.value = value;
-if (noChangeEvent) return;
-else signal(element);
+if (eventName) signal(element, eventName);
 } // setValue
 
 

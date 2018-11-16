@@ -73,6 +73,7 @@ const leftPanner = audio.createPanner(), rightPanner = audio.createPanner();
 
 const fdProcessor = new FractionalDelay(audio.sampleRate, 1.0);
 const automation = {};
+let projectName = "default.txt";
 
 /// create nodes
 const player = audio.createMediaElementSource (audioElement);
@@ -196,9 +197,9 @@ runAutomation(automation, automator);
 
 parameterName: function (id, value) {
 const parameter = automation.parameters.get(value);
-console.log("selectParameter: ", id, value, parameter);
-setValue(ui("automate"), parameter.enabled, "no change");
-setValue(ui("function"), parameter.functionText, "no change");
+console.log("selectParameter: ", value, parameter);
+ui("automate").checked = parameter.enabled;
+ui("function").value = parameter.functionText;
 }, // parameterName
 
 function: function (id, value) {
@@ -326,24 +327,41 @@ parameter.tickCount = 0;
 
 
 function save () {
-localStorage.userValues = JSON.stringify(
-enumerateUiControls()
-.map(x => [x.id, x.value])
-);
+localStorage[projectName] = JSON.stringify({
+name: projectName,
+
+userValues: enumerateUiControls()
+.map(element => [element.id, getValue(element.id)]),
+
+automation: Array.from(
+automation.parameters.entries()
+.map(binding => binding[1].function = null)) // array.from
+}); // stringify
 } // save
 
 function restore () {
 try {
-JSON.parse(localStorage.userValues)
-.forEach (x => {
-const [id, value] = x;
-const element = document.getElementById(id);
-element.value = value;
-element.dispatchEvent(new CustomEvent("change", {bubbles: true}));
+const project = JSON.parse(localStorage.projectName);
+
+// set field values
+project.userValues.forEach(binding => setValue(binding[0], binding[1]));
+
+// restore automation parameters
+project.automation.forEach (binding => {
+const parameter = binding[1];
+const p = automation.parameters.get(parameter.name);
+Object.assign(p, {
+function: parameter.functionText?
+compile(parameter.functionText) : null
+}); // assign
 }); // forEach
+updateAll();
+
 } catch (e) {
-alert (`Cannot restore: ${e}.`);
+console.log(`Cannot restore: ${e}.`);
+//alert (`Cannot restore: ${e}.`);
 } // try
+
 } // restore
 
 

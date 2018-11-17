@@ -59,6 +59,15 @@ label {display: block;}
 <label>delay: <input type="range" id="delay" value="0.00003" min="0" max="1" step="0.000020" accesskey="d"></label>
 </div><!-- #xtc -->
 
+<div id="limiter">
+<h2>Limiter</h2>
+<label>ratio: <input type="range" id="ratio" value="6" min="0" max="100"></label>
+<label>threshold: <input type="range" id="threshold" value="-5.0" min="-50" max="0"></label>
+<label>knee: <input type="range" id="knee" value="0" min="0" max="50"></label>
+<label>attack: <input type="range" id="attack" value="0" min="0" max="50"></label>
+<label>release: <input type="range" id="release" value="0" min="0" max="50"></label>
+</div><!-- #limiter -->
+
 </div><!-- #parameters -->
 </div><!-- #controls -->
 
@@ -68,11 +77,10 @@ label {display: block;}
 <script src="ambisonics.umd.js"></script>
 <script src="ui.js"></script>
 <script>
-const messageDisplayTime = 7 // seconds
+/// Globals
+const messageDisplayTime = 10 // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
-
-const leftPanner = audio.createPanner(), rightPanner = audio.createPanner();
 
 const fdProcessor = new FractionalDelay(audio.sampleRate, 1.0);
 const automation = {};
@@ -80,16 +88,21 @@ let projectName = "default.txt";
 
 /// create nodes
 const player = audio.createMediaElementSource (audioElement);
+const masterIn = audio.createGain(), masterOut = audio.createGain();
+const masterLimiter = audio.createDynamicsCompressor();
 const binauralDry = audio.createGain();
 const binauralWet = audio.createGain();
 const binauralIn = audio.createGain();
 const binauralOut = audio.createGain();
+const leftPanner = audio.createPanner(), rightPanner = audio.createPanner();
+
+
 const s = audio.createChannelSplitter(2);
 const m = audio.createChannelMerger(2);
 
 
 /// binaural connections
-player.connect(binauralIn);
+player.connect(masterIn).connect(binauralIn);
 binauralIn.connect(binauralDry);
 binauralIn.connect(s);
 
@@ -122,8 +135,8 @@ binauralOut.connect(xtcIn);
 xtcIn.connect(xDry);
 xtcIn.connect(xf).connect(xs);
 
-xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1);
-xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0);
+xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1); // merged into right channel
+xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0); // merged into left channel
 
 xdl.connect(xLFeedback).connect(rightPanner);
 xdr.connect(xRFeedback).connect(leftPanner);
@@ -132,7 +145,9 @@ xm.connect(xWet);
 
 xDry.connect(xtcOut);
 xWet.connect(xtcOut);
-xtcOut.connect(audio.destination);
+xtcOut.connect(masterOut);
+
+masterOut.connect(masterLimiter).connect(audio.destination);
 
 // set values
 leftPanner.panningModel = rightPanner.panningModel = "HRTF";
@@ -187,17 +202,12 @@ function update (id, value) {
 if (!id) return;
 
 const map = {
-bypass: function (id, value) {
-console.log("bypass: ", value, id);
-if (value) {
-player.disconnect();
-player.connect(audio.destination);
-message("Bypassed...");
-} else {
-player.disconnect();
-player.connect(binauralIn);
-} // if
-}, // bypass
+threshold: masterLimiter.threshold,
+knee: masterLimiter.knee,
+ratio: masterLimiter.ratio,
+attack: masterLimiter.attack,
+release: masterLimiter.release,
+bypass: (id, value) => bypass(value),
 
 angle: updatePosition,
 radius: updatePosition,
@@ -290,6 +300,18 @@ console.log(`run: cannot process ${id}, ${value}`);
 return;
 } // if
 } // run
+
+function bypass (value) {
+console.log("bypass: ", value, id);
+if (value) {
+player.disconnect();
+player.connect(audio.destination);
+message("Bypassed...");
+} else {
+player.disconnect();
+player.connect(masterIn);
+} // if
+} // bypass
 
 function updatePosition (id, value) {
 const a = id === "angle"? value : getValue("angle");

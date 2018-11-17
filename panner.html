@@ -21,7 +21,7 @@ label {display: block;}
 
 <div id="parameters">
 <div>
-<label>bypass <input type="checkbox" id="bypass" checked></label></div>
+<label>bypass <input type="checkbox" id="bypass" accesskey="z"></label></div>
 
 <div>
 <h2>Save and restore</h2>
@@ -251,7 +251,7 @@ panningModel: [leftPanner, rightPanner],
 "mix-binaural-unprocessed": function (id, value) {
 binauralDry.gain.value = 1 - value;
 binauralWet.gain.value = value;
-binauralOut.gain.value = 1 + .2 * value;
+//binauralOut.gain.value = 1 + .2 * value;
 },
 
 "mix-xtc": function (id, value) {
@@ -351,43 +351,51 @@ parameter.tickCount = 0;
 
 
 function save () {
-try {
-localStorage[projectName] = JSON.stringify({
+const project = {
 name: projectName,
 
 userValues: enumerateUiControls()
 .map(element => [element.id, getValue(element)]),
 
 automation: Array.from(automation.parameters.entries())
-.map(binding => binding[1].function = null)
-}); // stringify
+.map(binding => Object.assign({}, binding[1], {function: null}))
+}; // project
+console.log("saving:", project);
 
+try {
+localStorage.setItem(projectName, JSON.stringify(project));
 } catch (e) {
 message(`not saved: ${e}`);
+return null;
 } // try
+
+return project;
 } // save
 
 function restore () {
 try {
-const project = JSON.parse(localStorage.projectName);
+const project = JSON.parse(localStorage.getItem(projectName));
+console.log("project: ", project.toSource());
 
 // set field values
 project.userValues.forEach(binding => setValue(binding[0], binding[1]));
 
 // restore automation parameters
-project.automation.forEach (binding => {
-const parameter = binding[1];
-const p = automation.parameters.get(parameter.name);
-Object.assign(p, {
-function: parameter.functionText?
-compile(parameter.functionText) : null
-}); // assign
+project.automation.forEach (parameter => {
+const name = parameter.name;
+const value = Object.assign(
+{}, 
+parameter,
+{function: parameter.functionText? compile(parameter.functionText) : null}
+); // assign
+
+automation.parameters.set(name, value);
 }); // forEach
 updateAll();
 
 } catch (e) {
 console.log(`Cannot restore: ${e}.`);
-//alert (`Cannot restore: ${e}.`);
+message(`Cannot restore: ${e}.`);
 } // try
 
 } // restore

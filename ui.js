@@ -55,8 +55,8 @@ return enumerateUiControls ()
 } // enumerateNumericControls
 
 
-function enumerateUiControls () {
-return Array.from(document.querySelectorAll("#controls input, #controls select"));
+function enumerateUiControls (root = document) {
+return Array.from(root.querySelectorAll("#controls input, #controls select"));
 } // enumerateUiControls
 
 function getControlIds () {

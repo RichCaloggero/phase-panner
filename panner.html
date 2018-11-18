@@ -12,6 +12,15 @@ label {display: block;}
 <h1>Phase Panner</h1>
 
 <div id="controls">
+
+<div id="project">
+<h2>Project</h2>
+<label>Project: <select id="projects"></select></label>
+<button id="save" accesskey="s">Save</button>
+<button id="restore" accesskey="r">Restore</button>
+<br><label>project name: <input type="text" id="projectName" value="default project" accesskey="n"></label>
+</div><!-- #projects -->
+
 <div class="player">
 <h2>Audio Player</h2>
 <label>audio: <input type="text" id="audioFile" value="t1.mp3" accesskey="f"></label>
@@ -62,14 +71,6 @@ label {display: block;}
 <label>release: <input type="range" id="release" value="0" min="0" max="50"></label>
 </div><!-- #limiter -->
 
-<div id="projects">
-<h2>Projects</h2>
-<label>Project: <select id="projects"></select></label>
-<button id="save" accesskey="s">Save</button>
-<button id="restore" accesskey="r">Restore</button>
-<br><label>project name: <input type="text" id="projectName" value="default project"></label>
-</div><!-- #projects -->
-
 </div><!-- #parameters -->
 </div><!-- #controls -->
 
@@ -86,7 +87,7 @@ const audioElement = document.querySelector("audio");
 
 const fdProcessor = new FractionalDelay(audio.sampleRate, 1.0);
 const automation = {};
-const projects = [];
+let projects = [];
 let projectName = "default.txt";
 
 /// create nodes
@@ -204,10 +205,12 @@ if (!id) return;
 
 const map = {
 projects: function (id, value) {
-if (value) loadProject(value);
+if (value) loadProject(getProject(value));
 },
 
-projectName: "",
+projectName: function (id, value) {
+projectName = value;
+},
 
 
 threshold: masterLimiter.threshold,
@@ -401,7 +404,7 @@ function createProject () {
 return {
 name: projectName,
 
-userValues: enumerateUiControls()
+userValues: enumerateUiControls("#parameters")
 .map(element => [element.id, getValue(element)]),
 
 automation: Array.from(automation.parameters.entries())
@@ -411,15 +414,13 @@ automation: Array.from(automation.parameters.entries())
 
 function restore () {
 try {
-const data = JSON.parse(localStorage.getItem(projects));
+const data = JSON.parse(localStorage.getItem("projects"));
 if (! data) {
-message("Restore failed.");
-return null;
+throw("Restore failed.");
 } // if
 
 projects = data;
 console.log("restore: ", projects.length, " projects restored.");
-updateProjectSelector(projects);
 
 } catch (e) {
 console.log(`Cannot restore: ${e}.`);
@@ -430,6 +431,8 @@ if (projects && projects.length > 0) {
 if (projectName && projects[projectName]) loadProject (projects[projectName]);
 else loadProject(projects[0]);
 } // if
+
+updateProjectSelector(projects);
 return projectName;
 } // restore
 
@@ -454,7 +457,6 @@ parameter,
 automation.parameters.set(name, value);
 }); // forEach
 
-updateAll();
 return project;
 } // loadProject
 

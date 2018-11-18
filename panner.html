@@ -399,16 +399,16 @@ parameter.tickCount = 0;
 function save () {
 const data = createProject();
 console.log("saving:", data);
-projects.push(data);
-
+projects = projects
+.filter(p => p.name !== data.name)
+.concat(data);
 try {
 localStorage.setItem("projects", JSON.stringify(projects));
+return projects;
 } catch (e) {
 message(`not saved: ${e}`);
 return null;
 } // try
-
-return projects;
 } // save
 
 function createProject () {

@@ -15,9 +15,10 @@ label {display: block;}
 
 <div id="project">
 <h2>Project</h2>
-<label>Project: <select id="projects"></select></label>
+<label>Project: <select id="projects" accesskey="u"></select></label>
 <button id="save" accesskey="s">Save</button>
 <button id="restore" accesskey="r">Restore</button>
+<button id="delete">delete</button>
 <br><label>project name: <input type="text" id="projectName" value="default project" accesskey="n"></label>
 </div><!-- #projects -->
 
@@ -81,7 +82,7 @@ label {display: block;}
 <script src="ui.js"></script>
 <script>
 /// Globals
-const messageDisplayTime = 10 // seconds
+const messageDisplayTime = 15; // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
 
@@ -158,8 +159,8 @@ l.gain.value = r.gain.value = -1;
 
 /// initialize
 initializeAutomation();
-updateAll ();
-
+if (!restore()) updateAll ();
+ui("projects").focus();
 load();
 
 
@@ -177,19 +178,26 @@ if (autoPlay) audioElement.play();
 
 /// events
 
-document.querySelector("#load").addEventListener("click", load);
-document.querySelector("#save").addEventListener("click", save);
-document.querySelector("#restore").addEventListener("click", restore);
+ui("load").addEventListener("click", load);
+ui("save").addEventListener("click", save);
+ui("restore").addEventListener("click", restore);
+ui("delete").addEventListener("click", deleteProject);
 
-document.querySelector("#parameters").addEventListener("keydown", (e) => {
+document.querySelector("#controls").addEventListener("keydown", (e) => {
 if (e.key === "0" && e.target.type && e.target.type === "range") {
 e.target.value = 0;
 signal(e.target);
 e.target.focus();
 } // if
 
+if (e.key === "Delete" && e.target.id === "projects") {
+deleteProject();
+setTimeout(() => e.target.focus(), 0);
+} // if
+
 if (e.key === "Enter" && e.target.type === "text") signal(e.target);
-});
+
+}); // special keys
 
 document.querySelector("#controls").addEventListener("change", (e) => update(e.target.id, getValue(e.target.id)));
 
@@ -204,6 +212,8 @@ function update (id, value) {
 if (!id) return;
 
 const map = {
+delete: deleteProject,
+
 projects: function (id, value) {
 if (value) loadProject(getProject(value));
 },
@@ -420,7 +430,7 @@ throw("Restore failed.");
 } // if
 
 projects = data;
-console.log("restore: ", projects.length, " projects restored.");
+setTimeout(updateAll, 0);
 
 } catch (e) {
 console.log(`Cannot restore: ${e}.`);
@@ -428,12 +438,14 @@ message(`Cannot restore: ${e}.`);
 } // try
 
 if (projects && projects.length > 0) {
-if (projectName && projects[projectName]) loadProject (projects[projectName]);
+if (projectName && getProject(projectName)) loadProject (getProject(projectName));
 else loadProject(projects[0]);
+updateProjectSelector(projects);
+message(`${projects.length} projects restored.`);
+return projectName;
 } // if
 
-updateProjectSelector(projects);
-return projectName;
+return null;
 } // restore
 
 function getProject(name) {
@@ -461,10 +473,22 @@ return project;
 } // loadProject
 
 function updateProjectSelector (data) {
-data.forEach(item => {
-ui("projects").add(createOption(item.name));
-}); // forEach
+populateSelector(
+"projects",
+data.map(p => p.name)
+); // populateSelector
 } // updateProjectSelector 
+
+function deleteProject () {
+if (projects.length > 0) {
+const index = ui("projects").selectedIndex;
+if (index < 0) return;
+delete projects[index];
+projects = projects.filter(p => p); // copy, removing empty slot
+updateProjectSelector(projects);
+if (projects.length > 0) loadProject(projects[0]);
+} // if
+} // deleteProject
 
 function createOption (text, value) {
 const option = document.createElement("option")

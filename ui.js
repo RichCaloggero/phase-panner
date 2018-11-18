@@ -1,5 +1,7 @@
 function populateSelector(id, items) {
 const element = ui(id);
+if (element) {
+element.innerHTML = "";
 items.forEach(item => {
 let key, value;
 if (typeof(item) === "string" || typeof(item) === "number") {
@@ -11,7 +13,8 @@ value = item[1];
 
 element.add(createOption(key, value));
 }); // forEach
-} // initSelector
+} // if
+} // populateSelector
 
 function getValue (elementOrId) {
 const element = elementOrId instanceof HTMLElement? elementOrId
@@ -56,6 +59,7 @@ return enumerateUiControls ()
 
 
 function enumerateUiControls (root = document) {
+if (typeof(root) === "string" || root instanceof String) root = document.querySelector(root);
 return Array.from(root.querySelectorAll("#controls input, #controls select"));
 } // enumerateUiControls
 

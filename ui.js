@@ -1,3 +1,18 @@
+function populateSelector(id, items) {
+const element = ui(id);
+items.forEach(item => {
+let key, value;
+if (typeof(item) === "string" || typeof(item) === "number") {
+key = value = item;
+} else if (item instanceof Array) {
+key = item[0];
+value = item[1];
+} // if
+
+element.add(createOption(key, value));
+}); // forEach
+} // initSelector
+
 function getValue (elementOrId) {
 const element = elementOrId instanceof HTMLElement? elementOrId
 : document.getElementById(elementOrId);

@@ -23,12 +23,6 @@ label {display: block;}
 <div>
 <label>bypass <input type="checkbox" id="bypass" accesskey="z"></label></div>
 
-<div>
-<h2>Save and restore</h2>
-<button id="save" accesskey="s">Save</button>
-<button id="restore" accesskey="r">Restore</button>
-</div>
-
 <div id="position">
 <h2>Position</h2>
 <label>panning model: <input type="text" id="panningModel" value="HRTF"></label>
@@ -68,6 +62,14 @@ label {display: block;}
 <label>release: <input type="range" id="release" value="0" min="0" max="50"></label>
 </div><!-- #limiter -->
 
+<div id="projects">
+<h2>Projects</h2>
+<label>Project: <select id="projects"></select></label>
+<button id="save" accesskey="s">Save</button>
+<button id="restore" accesskey="r">Restore</button>
+<br><label>project name: <input type="text" id="projectName" value="default project"></label>
+</div><!-- #projects -->
+
 </div><!-- #parameters -->
 </div><!-- #controls -->
 
@@ -84,6 +86,7 @@ const audioElement = document.querySelector("audio");
 
 const fdProcessor = new FractionalDelay(audio.sampleRate, 1.0);
 const automation = {};
+const projects = [];
 let projectName = "default.txt";
 
 /// create nodes
@@ -125,8 +128,6 @@ const xf = audio.createBiquadFilter();
 const xdl = audio.createDelay();
 const xdr = audio.createDelay();
 const xLFeedback = audio.createGain(), xRFeedback = audio.createGain();
-const xDryDelay = audio.createDelay();
-const xMakeupFilter = audio.createBiquadFilter();
 
 // xtc connections
 
@@ -186,7 +187,7 @@ signal(e.target);
 e.target.focus();
 } // if
 
-if (e.key === "Enter" && e.target.id === "function") signal(e.target);
+if (e.key === "Enter" && e.target.type === "text") signal(e.target);
 });
 
 document.querySelector("#controls").addEventListener("change", (e) => update(e.target.id, getValue(e.target.id)));
@@ -202,6 +203,13 @@ function update (id, value) {
 if (!id) return;
 
 const map = {
+projects: function (id, value) {
+if (value) loadProject(value);
+},
+
+projectName: "",
+
+
 threshold: masterLimiter.threshold,
 knee: masterLimiter.knee,
 ratio: masterLimiter.ratio,
@@ -338,6 +346,7 @@ rotator.updateRotMtx();
 } // update
 
 
+
 /// automation
 
 function runAutomation (automation, automator) {
@@ -371,9 +380,25 @@ parameter.tickCount = 0;
 } // if enabled
 } // automator
 
+/// project
 
 function save () {
-const project = {
+const data = createProject();
+console.log("saving:", data);
+projects.push(data);
+
+try {
+localStorage.setItem("projects", JSON.stringify(projects));
+} catch (e) {
+message(`not saved: ${e}`);
+return null;
+} // try
+
+return projects;
+} // save
+
+function createProject () {
+return {
 name: projectName,
 
 userValues: enumerateUiControls()
@@ -381,24 +406,39 @@ userValues: enumerateUiControls()
 
 automation: Array.from(automation.parameters.entries())
 .map(binding => Object.assign({}, binding[1], {function: null}))
-}; // project
-console.log("saving:", project);
-
-try {
-localStorage.setItem(projectName, JSON.stringify(project));
-} catch (e) {
-message(`not saved: ${e}`);
-return null;
-} // try
-
-return project;
-} // save
+}; // return
+} // createProject
 
 function restore () {
 try {
-const project = JSON.parse(localStorage.getItem(projectName));
-console.log("project: ", project.toSource());
+const data = JSON.parse(localStorage.getItem(projects));
+if (! data) {
+message("Restore failed.");
+return null;
+} // if
 
+projects = data;
+console.log("restore: ", projects.length, " projects restored.");
+updateProjectSelector(projects);
+
+} catch (e) {
+console.log(`Cannot restore: ${e}.`);
+message(`Cannot restore: ${e}.`);
+} // try
+
+if (projects && projects.length > 0) {
+if (projectName && projects[projectName]) loadProject (projects[projectName]);
+else loadProject(projects[0]);
+} // if
+return projectName;
+} // restore
+
+function getProject(name) {
+return projects.find(item => item.name === name);
+} // getProject
+
+function loadProject (project) {
+if (project.name) ui("projectName").value = project.name;
 // set field values
 project.userValues.forEach(binding => setValue(binding[0], binding[1]));
 
@@ -413,15 +453,23 @@ parameter,
 
 automation.parameters.set(name, value);
 }); // forEach
+
 updateAll();
+return project;
+} // loadProject
 
-} catch (e) {
-console.log(`Cannot restore: ${e}.`);
-message(`Cannot restore: ${e}.`);
-} // try
+function updateProjectSelector (data) {
+data.forEach(item => {
+ui("projects").add(createOption(item.name));
+}); // forEach
+} // updateProjectSelector 
 
-} // restore
-
+function createOption (text, value) {
+const option = document.createElement("option")
+option.textContent = text;
+option.value = arguments.length >= 2? value : text;
+return option;
+} // createOption 
 
 function message (...args) {
 _message(args.join(", "));
@@ -459,14 +507,6 @@ createOption(element.id, element.id)
 }); // forEach
 
 runAutomation(automation, automator);
-
-
-function createOption (text) {
-const option = document.createElement("option")
-option.textContent = text;
-option.value = text;
-return option;
-} // createOption 
 } // initializeAutomation
 
 function compile(text) {

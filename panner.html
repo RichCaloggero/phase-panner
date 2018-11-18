@@ -82,6 +82,7 @@ label {display: block;}
 <script src="ui.js"></script>
 <script>
 /// Globals
+
 const messageDisplayTime = 15; // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
@@ -486,7 +487,7 @@ if (index < 0) return;
 delete projects[index];
 projects = projects.filter(p => p); // copy, removing empty slot
 updateProjectSelector(projects);
-if (projects.length > 0) loadProject(projects[0]);
+if (projects.length > 0) message(`Project ${loadProject(projects[0])} loaded.`);
 } // if
 } // deleteProject
 

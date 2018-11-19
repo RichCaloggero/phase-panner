@@ -20,17 +20,17 @@ function getValue (elementOrId) {
 const element = elementOrId instanceof HTMLElement? elementOrId
 : document.getElementById(elementOrId);
 if (!element) return undefined;
-
-if (element.getAttribute("type") === "checkbox") {
-return element.checked;
-} else if (element.type === "text") {
-return element.value;
-
-} else {
+const type = element.type;
 const value = element.value;
-return Number.isNaN(Number(value))?
-value
-: Number(value);
+
+if (type === "checkbox") {
+return element.checked;
+} else if (type === "text") {
+return value;
+} else if (element instanceof HTMLInputElement && (type === "number" || type === "range")) {
+return Number(value);
+} else {
+return value;
 } // if
 } // getValue
 
@@ -58,9 +58,10 @@ return enumerateUiControls ()
 } // enumerateNumericControls
 
 
-function enumerateUiControls (root = document) {
+function enumerateUiControls (selector = "*", root = document.querySelector("#controls") || document) {
 if (typeof(root) === "string" || root instanceof String) root = document.querySelector(root);
-return Array.from(root.querySelectorAll("#controls input, #controls select"));
+return Array.from(root.querySelectorAll("input, select"))
+.filter(element => element.matches(selector));
 } // enumerateUiControls
 
 function getControlIds () {

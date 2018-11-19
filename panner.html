@@ -63,9 +63,14 @@ label {display: block;}
 <label>delay: <input type="range" id="delay" value="0.00003" min="0" max="1" step="0.000020" accesskey="d"></label>
 </div><!-- #xtc -->
 
+<div id="reverb">
+<label>reverb mix: <input type="range" id="reverbMix" value="0" min="-1" max="1" step="0.1" accesskey="-"></label>
+
+</div><!-- #reverb -->
+
 <div id="limiter">
 <h2>Limiter</h2>
-<label>ratio: <input type="range" id="ratio" value="6" min="0" max="100"></label>
+<label>ratio: <input type="range" id="ratio" value="1" min="1" max="20"></label>
 <label>threshold: <input type="range" id="threshold" value="-5.0" min="-50" max="0"></label>
 <label>knee: <input type="range" id="knee" value="0" min="0" max="50"></label>
 <label>attack: <input type="range" id="attack" value="0" min="0" max="50"></label>
@@ -78,7 +83,7 @@ label {display: block;}
 <div id="message" aria-live="polite"></div>
 
 <script src="delay.js"></script>
-<script src="ambisonics.umd.js"></script>
+<script src="resonance-audio.min.js"></script>
 <script src="ui.js"></script>
 <script>
 /// Globals
@@ -88,6 +93,7 @@ const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
 
 const fdProcessor = new FractionalDelay(audio.sampleRate, 1.0);
+const room = createRoom(createScene());
 const automation = {};
 let projects = [];
 let projectName = "default.txt";
@@ -96,6 +102,10 @@ let projectName = "default.txt";
 const player = audio.createMediaElementSource (audioElement);
 const masterIn = audio.createGain(), masterOut = audio.createGain();
 const masterLimiter = audio.createDynamicsCompressor();
+const reverbDry = audio.createGain();
+const reverbWet = audio.createGain();
+const reverbIn = audio.createGain();
+const reverbOut = audio.createGain();
 const binauralDry = audio.createGain();
 const binauralWet = audio.createGain();
 const binauralIn = audio.createGain();
@@ -108,7 +118,13 @@ const m = audio.createChannelMerger(2);
 
 
 /// binaural connections
-player.connect(masterIn).connect(binauralIn);
+player.connect(masterIn)
+
+createReverb(audio, room, reverbIn, reverbOut);
+masterIn.connect(reverbIn);
+reverbOut.connect(masterOut);
+
+masterIn.connect(binauralIn);
 binauralIn.connect(binauralDry);
 binauralIn.connect(s);
 
@@ -160,9 +176,11 @@ l.gain.value = r.gain.value = -1;
 
 /// initialize
 initializeAutomation();
-if (!restore()) updateAll ();
-ui("projects").focus();
+restore();
 load();
+updateAll();
+runAutomation(automation, automator);
+ui("projects").focus();
 
 
 
@@ -213,7 +231,19 @@ function update (id, value) {
 if (!id) return;
 
 const map = {
-delete: deleteProject,
+reverbMix: function (id, value) {
+reverbWet.gain.value = value;
+reverbDry .gain.value = 1 - value;
+},
+
+delete: function (id, value) {
+deleteProject(ui("projects").selectedIndex);
+if (projects.length > 0) {
+loadProject(projects[0]);
+message(`Project ${project.name} loaded.`);
+} // if
+},
+
 
 projects: function (id, value) {
 if (value) loadProject(getProject(value));
@@ -246,8 +276,8 @@ runAutomation(automation, automator);
 }, // enableAutomation
 
 parameterName: function (id, value) {
+console.log("selectParameter: ", value);
 const parameter = automation.parameters.get(value);
-console.log("selectParameter: ", value, parameter);
 display(parameter);
 
 function display (parameter) {
@@ -269,7 +299,7 @@ automate: function (id, value) {
 const parameterName = getValue("parameterName");
 const parameter = automation.parameters.get(parameterName);
 parameter.enabled = value;
-console.log("automate: ", value, parameter);
+//console.log("automate: ", value, parameter);
 }, // automate
 
 tick: [automation],
@@ -375,33 +405,40 @@ console.log("automation stopped at tick  ", automation.tickCount);
 // runAutomation
 
 function automator (t, parameter) {
-if (parameter && parameter.enabled) {
+if (! parameter) return;
+if (parameter.enabled) {
 parameter.tickCount += 1;
 //console.log("automator: ", parameter);
 
 try {
+if (!parameter.function) throw new Error(`No function to run for parameter ${parameter.name}`);
 update(parameter.name, parameter.function(t));
+
 } catch (e) {
-message(e);
 update("parameterName", parameter.name);
+ui("parameterName").value = parameter.name;
 ui("automate").checked = false;
 parameter.enabled = false;
-} // catch
+message(`Automator: failed to automate ${parameter.name}; ${e}`);
 
-} else if (parameter.tickCount > 0) {
+if (parameter.tickCount > 0) {
 console.log ("stopping automation of ", parameter.name, " at tick ", parameter.tickCount);
 parameter.tickCount = 0;
-} // if enabled
+} // if tickCount
+
+} // catch
+} // if
 } // automator
 
 /// project
 
 function save () {
 const data = createProject();
-console.log("saving:", data);
+console.log("saving:", data.length, " items.");
 projects = projects
 .filter(p => p.name !== data.name)
 .concat(data);
+
 try {
 localStorage.setItem("projects", JSON.stringify(projects));
 return projects;
@@ -415,7 +452,7 @@ function createProject () {
 return {
 name: projectName,
 
-userValues: enumerateUiControls("#parameters")
+userValues: enumerateUiControls()
 .map(element => [element.id, getValue(element)]),
 
 automation: Array.from(automation.parameters.entries())
@@ -430,23 +467,23 @@ if (! data) {
 throw("Restore failed.");
 } // if
 
-projects = data;
-setTimeout(updateAll, 0);
+projects = data.slice();
+if (projects.length > 0) {
+loadProject(projects[0]);
+setTimeout(() => {
+updateProjectSelector(projects);
+message(`${projects.length} projects restored.`);
+}, 0);
+} // if
+
+console.log("restored ", projects.map(x => x.name).join(", "));
+return projects;
 
 } catch (e) {
 console.log(`Cannot restore: ${e}.`);
 message(`Cannot restore: ${e}.`);
-} // try
-
-if (projects && projects.length > 0) {
-if (projectName && getProject(projectName)) loadProject (getProject(projectName));
-else loadProject(projects[0]);
-updateProjectSelector(projects);
-message(`${projects.length} projects restored.`);
-return projectName;
-} // if
-
 return null;
+} // try
 } // restore
 
 function getProject(name) {
@@ -454,9 +491,10 @@ return projects.find(item => item.name === name);
 } // getProject
 
 function loadProject (project) {
+projectName = project.name;
 if (project.name) ui("projectName").value = project.name;
 // set field values
-project.userValues.forEach(binding => setValue(binding[0], binding[1]));
+project.userValues.forEach(binding => setValue(ui(binding[0]), binding[1]));
 
 // restore automation parameters
 project.automation.forEach (parameter => {
@@ -480,15 +518,11 @@ data.map(p => p.name)
 ); // populateSelector
 } // updateProjectSelector 
 
-function deleteProject () {
-if (projects.length > 0) {
-const index = ui("projects").selectedIndex;
-if (index < 0) return;
+function deleteProject (index) {
+if (index < 0 || index > projects.length) return;
 delete projects[index];
 projects = projects.filter(p => p); // copy, removing empty slot
 updateProjectSelector(projects);
-if (projects.length > 0) message(`Project ${loadProject(projects[0])} loaded.`);
-} // if
 } // deleteProject
 
 function createOption (text, value) {
@@ -510,7 +544,6 @@ return text;
 } // message
 
 function initializeAutomation () {
-console.log("initializing automation...");
 automation.defaultParameter = {
 name: "",
 enabled: false,
@@ -527,14 +560,60 @@ automation.parameters = new Map();
 enumerateNumericControls().forEach(element => {
 automation.parameters.set(element.id, 
 Object.assign({}, automation.defaultParameter, {name: element.id}));
-
-ui("parameterName").add(
-createOption(element.id, element.id)
-); // add
 }); // forEach
 
-runAutomation(automation, automator);
+populateSelector(
+"parameterName", 
+Array.from(automation.parameters.entries())
+.map(binding => binding[0])
+) // populateSelector
 } // initializeAutomation
+
+function createScene (order = 3) {
+const scene = new ResonanceAudio(audio);
+scene.setAmbisonicOrder(order);
+return scene;
+} // createScene
+
+function createReverb (audio, scene, reverbIn, reverbOut) {
+const inLeft = scene.createSource();
+const inRight = scene.createSource();
+const s = audio.createChannelSplitter();
+reverbIn.connect(reverbDry);
+
+reverbIn.connect(s);
+s.connect(inLeft.input, 0,0);
+s.connect(inRight.input, 1,0);
+scene.output.connect(reverbWet);
+
+reverbDry.connect(reverbOut);
+reverbWet.connect(reverbOut);
+} // createReverb
+
+// make a room
+function createRoom (scene) {
+
+const roomDimensions = {
+width: 3.1,
+height: 2.5,
+depth: 3.4
+}; // dimensions
+
+const roomMaterials = {
+// Room wall materials
+left: 'brick-bare',
+right: 'curtain-heavy',
+front: 'marble',
+back: 'glass-thin',
+// Room floor
+down: 'grass',
+// Room ceiling
+up: 'transparent'
+}; // materials
+
+scene.setRoomProperties(roomDimensions, roomMaterials);
+return scene;
+} // createRoom
 
 function compile(text) {
 try {

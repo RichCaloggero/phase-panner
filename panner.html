@@ -37,7 +37,7 @@ label {display: block;}
 <h2>Position</h2>
 <label>panning model: <input type="text" id="panningModel" value="HRTF"></label>
 <label>angle: <input type="range" id="angle" min="0" step="0.02" accesskey="a"></label>
-<label>radius: <input type="range" id="radius" min="-90" max="90" step="0.1"></label>
+<label>radius: <input type="range" id="radius" min="-10" max="10" step="0.01"></label>
 </div>
 
 <div id="automation">
@@ -277,7 +277,7 @@ runAutomation(automation, automator);
 }, // enableAutomation
 
 parameterName: function (id, value) {
-console.log("selectParameter: ", value);
+//console.log("selectParameter: ", value);
 const parameter = automation.parameters.get(value);
 display(parameter);
 
@@ -355,7 +355,7 @@ return;
 } // run
 
 function bypass (value) {
-console.log("bypass: ", value, id);
+//console.log("bypass: ", value, id);
 if (value) {
 player.disconnect();
 player.connect(audio.destination);
@@ -375,11 +375,13 @@ setPosition(a, r);
 function setPosition (a, r) {
 leftPanner.positionX.value = r*Math.cos(a);
 leftPanner.positionY.value = r*Math.sin(a);
-leftPanner.positionZ.value = r*Math.cos(a+a/3+a/6+a/9);
+leftPanner.positionZ = Math.sin(a + r) * Math.cos(a - r);
+//leftPanner.positionZ.value = r*Math.cos(a+r/3+r/6+r/9);
 
 rightPanner.positionX.value = r*Math.sin(-1*a);
 rightPanner.positionY.value = r*Math.cos(-1*a);
-rightPanner.positionZ.value = r*Math.sin(-1*a-a/3+a/6-a/9);
+rightPanner.positionZ = Math.cos(a + r) * Math.sin(a - r);
+//rightPanner.positionZ.value = r*Math.sin(-1*a-r/3+r/6-r/9);
 } // setPosition
 
 function updateRotator (id, value) {
@@ -402,18 +404,27 @@ setTimeout(() => runAutomation(automation, automator), 1000 * automation.tick);
 
 } else {
 console.log("automation stopped at tick  ", automation.tickCount);
-} } // enabled
-// runAutomation
+} // enabled
+} // runAutomation
 
 function automator (t, parameter) {
-if (! parameter) return;
+if (!parameter) return;
 if (parameter.enabled) {
-parameter.tickCount += 1;
-//console.log("automator: ", parameter);
-
 try {
 if (!parameter.function) throw new Error(`No function to run for parameter ${parameter.name}`);
 update(parameter.name, parameter.function(t));
+parameter.tickCount += 1;
+
+/*if (parameter.log) {
+parameter.log.push([parameter.function(t), parameter.tickCount]);
+if (parameter.log.length === 20) {
+console.log (`- ${parameter.name} ${parameter.log.length}: ${parameter.log.map(x => Number(x[0]).toFixed(2))}`);
+parameter.enabled = false;
+} // if
+} else {
+parameter.log = [];
+} // if
+*/
 
 } catch (e) {
 update("parameterName", parameter.name);
@@ -426,7 +437,6 @@ if (parameter.tickCount > 0) {
 console.log ("stopping automation of ", parameter.name, " at tick ", parameter.tickCount);
 parameter.tickCount = 0;
 } // if tickCount
-
 } // catch
 } // if
 } // automator

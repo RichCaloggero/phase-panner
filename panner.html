@@ -171,6 +171,7 @@ masterOut.connect(masterLimiter).connect(audio.destination);
 
 // set values
 leftPanner.panningModel = rightPanner.panningModel = "HRTF";
+leftPanner.refDistance = rightPanner.refDistance = 10;
 l.gain.value = r.gain.value = -1;
 
 

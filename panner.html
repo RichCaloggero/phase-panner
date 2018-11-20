@@ -36,8 +36,8 @@ label {display: block;}
 <div id="position">
 <h2>Position</h2>
 <label>panning model: <input type="text" id="panningModel" value="HRTF"></label>
-<label>angle: <input type="range" id="angle" min="0" step="0.02" accesskey="a"></label>
-<label>radius: <input type="range" id="radius" min="-10" max="10" step="0.01"></label>
+<label>angle: <input type="range" id="angle" data-group="position" min="0" step="0.02" accesskey="a"></label>
+<label>radius: <input type="range" id="radius" data-group="position" min="-10" max="10" step="0.01"></label>
 </div>
 
 <div id="automation">
@@ -227,6 +227,24 @@ function updateAll () {
 enumerateUiControls().forEach(element => update(element.id, getValue(element.id)));
 } // updateAll
 
+function updateGroup (parameter, value) {
+//nsole.log(`updateGroup: ${parameter.group}, ${parameter.name}, ${value}`);
+automation.groups.get(parameter.group).values.set(parameter.name, value);
+} // updateGroup
+
+function processGroups (groups) {
+groups.forEach( group => {
+if (group.values.size > 0) {
+//console.log(`- running group ${group.name} with ${group.values.size} values; ${group.values}`);
+group.function(group.values);
+group.values.clear();
+} // if
+
+}); // forEach
+} // processGroups
+
+
+
 function update (id, value) {
 //console.log(`update: ${id}, ${value}`);
 if (!id) return;
@@ -367,12 +385,23 @@ player.connect(masterIn);
 } // bypass
 
 function updatePosition (id, value) {
+console.log("updatePosition: ", id, value);
 const a = id === "angle"? value : getValue("angle");
 const r = id === "radius"? value : getValue("radius");
 setPosition(a, r);
 } // updatePosition
 
+
+function updateRotator (id, value) {
+const prop = id;
+rotator[prop] = value;
+rotator.updateRotMtx();
+} // updateRotator
+
+} // update
+
 function setPosition (a, r) {
+//console.log("setPosition: ", a, r);
 leftPanner.positionX.value = r*Math.cos(a);
 leftPanner.positionY.value = r*Math.sin(a);
 leftPanner.positionZ = Math.sin(a + r) * Math.cos(a - r);
@@ -384,22 +413,14 @@ rightPanner.positionZ = Math.cos(a + r) * Math.sin(a - r);
 //rightPanner.positionZ.value = r*Math.sin(-1*a-r/3+r/6-r/9);
 } // setPosition
 
-function updateRotator (id, value) {
-const prop = id;
-rotator[prop] = value;
-rotator.updateRotMtx();
-} // updateRotator
-
-} // update
-
-
 
 /// automation
 
 function runAutomation (automation, automator) {
 if (automation.enabled) {
-automation.tickCount += 1;
 automation.parameters.forEach(parameter => automator(audio.currentTime, parameter));
+processGroups(automation.groups);
+automation.tickCount += 1;
 setTimeout(() => runAutomation(automation, automator), 1000 * automation.tick);
 
 } else {
@@ -408,11 +429,12 @@ console.log("automation stopped at tick  ", automation.tickCount);
 } // runAutomation
 
 function automator (t, parameter) {
-if (!parameter) return;
-if (parameter.enabled) {
+if (!parameter || !parameter.enabled) return;
 try {
 if (!parameter.function) throw new Error(`No function to run for parameter ${parameter.name}`);
-update(parameter.name, parameter.function(t));
+
+if (parameter.group) updateGroup(parameter, parameter.function(t));
+else update(parameter.name, parameter.function(t));
 parameter.tickCount += 1;
 
 /*if (parameter.log) {
@@ -438,7 +460,6 @@ console.log ("stopping automation of ", parameter.name, " at tick ", parameter.t
 parameter.tickCount = 0;
 } // if tickCount
 } // catch
-} // if
 } // automator
 
 /// project
@@ -559,6 +580,8 @@ automation.defaultParameter = {
 name: "",
 enabled: false,
 tickCount: 0,
+lastValue: 0,
+group: "",
 function: null,
 functionText: ""
 };
@@ -568,9 +591,24 @@ automation.tickCount = 0;
 automation.tick = 0.2; // seconds
 automation.parameters = new Map();
 
+automation.groups = new Map([
+["position", {
+name: "position",
+values: new Map(),
+function: function (values) {
+const r = values.has("radius")? values.get("radius") : getValue("radius");
+const a = values.has("angle")? values.get("angle") : getValue("angle");
+setPosition(a, r);
+} // function
+}] // position
+]); // groups
+
 enumerateNumericControls().forEach(element => {
 automation.parameters.set(element.id, 
-Object.assign({}, automation.defaultParameter, {name: element.id}));
+Object.assign({}, automation.defaultParameter, {
+name: element.id,
+group: element.getAttribute("data-group") || ""
+}));
 }); // forEach
 
 populateSelector(

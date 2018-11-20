@@ -666,7 +666,7 @@ return scene;
 
 function compile(text) {
 try {
-f = _compile(text);
+f = _compile(text, "t");
 f(0); // to be sure it was compiled correctly
 return f;
 } catch (e) {

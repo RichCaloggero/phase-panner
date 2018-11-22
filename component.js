@@ -11,32 +11,70 @@ this.wet.connect(this.output);
 this.dry.connect(this.output);
 } // constructor
 
-connect (node) {
-this.output.connect (node);
-} // connect
-
-disconnect () {
-this.output.disconnect();
-} // disconnect
-
 mix (value) {
 this.dry.gain.value = 1-value;
 this.wet.gain.value = value;
 return value;
 } // mix
 
+_connect (input, output) {
+if (input instanceof Component) input = input.input;
+if (output instanceof Component) output = output.input;
+return input.connect(output);
+} // _connect
+
+/*connect (node) {
+this.output.connect (node);
+return node;
+} // connect
+*/
+
+disconnect () {
+this.output.disconnect();
+} // disconnect
+
 } // Component
+
+class ReverseStereo extends Component {
+constructor (audio) {
+super (audio);
+const s = audio.createChannelSplitter(2);
+const m = audio.createChannelMerger(2);
+this.input.connect(s);
+s.connect(m, 0,1);
+s.connect(m, 1,0);
+m.connect(this.wet);
+} // constructor
+} // class ReverseStereo
 
 class Binaural extends Component {
 constructor (audio) {
 super (audio);
 const s = audio.createChannelSplitter(2);
-const leftPanner = audio.createPanner(), rightPanner = audio.createPanner();
+this.leftPanner = audio.createPanner();
+this.rightPanner = audio.createPanner();
+this.leftPanner.panningModel = this.rightPanner.panningModel = "HRTF";
+this.leftPanner.refDistance = this.rightPanner.refDistance = 10;
 
 this.input.connect(s);
-s.connect(leftPanner, 0).connect(this.wet);
-s.connect(rightPanner, 1).connect(this.wet);
+s.connect(this.leftPanner, 0).connect(this.wet);
+s.connect(this.rightPanner, 1).connect(this.wet);
 } // constructor
+
+
+setPosition (a, r) {
+//console.log("setPosition: ", a, r);
+this.leftPanner.positionX.value = r*Math.cos(a);
+this.leftPanner.positionY.value = r*Math.sin(a);
+//this.leftPanner.positionZ = Math.sin(a + r) * Math.cos(a - r);
+this.leftPanner.positionZ.value = r*Math.cos(a+r/3+r/6+r/9);
+
+this.rightPanner.positionX.value = r*Math.sin(-1*a);
+this.rightPanner.positionY.value = r*Math.cos(-1*a);
+//this.rightPanner.positionZ = Math.cos(a + r) * Math.sin(a - r);
+this.rightPanner.positionZ.value = r*Math.sin(-1*a-r/3+r/6-r/9);
+} // setPosition
+
 } // class Binaural
 
 class Series extends Component {
@@ -45,11 +83,11 @@ super (audio);
 if (components.length < 2) throw new Error("Series: need two or more components");
 components.forEach((c, i, all) => {
 c.disconnect();
-if (i < all.length-1) c.connect(all[i+1]);
+if (i < all.length-1) this._connect(c, all[i+1]);
 }); // forEach
 
-this.input.connect(components[0]);
-components[components.length-1].connect(this.wet);
+this._connect(this.input, components[0]);
+this._connect(components[components.length-1], this.wet);
 } // constructor
 } // class Series
 
@@ -62,8 +100,8 @@ output.gain.value = 1 / components.length;
 
 components.forEach((c, i) => {
 c.disconnect();
-this.input.connect(c);
-c.connect(output);
+this._connect(this.input, c);
+this._connect(c, output);
 }); // forEach
 
 output.connect(this.wet);
@@ -76,9 +114,18 @@ super (audio);
 this.bandCount = bandCount;
 this.filters = [];
 this.filterComponent = null;
-while (bandCount > 0) {
-filters.push(audio.createBiquadFilter());
+const reverse = new ReverseStereo(audio);
+reverse.mix(1); // all wet
+this.delay = audio.createDelay();
+
+while (bandCount-- > 0) {
+const f = audio.createBiquadFilter();
+f.type = "allpass";
+this.filters.push(f);
 } // while
+
+this.input.connect(reverse.input);
+reverse.output.connect(this.delay).connect(this.filters[0]).connect(this.wet);
 } // constructor
 
 series () {
@@ -95,3 +142,24 @@ this.filterComponent.connect(this.output);
 
 
 } // class Phaser
+
+class Xtc extends Component {
+constructor (audio) {
+super (audio);
+const s = audio.createChannelSplitter(2);
+const m = audio.createChannelMerger(2);
+this.filter = audio.createBiquadFilter();
+this.filter.type = "bandpass";
+this.leftDelay = audio.createDelay(), this.rightDelay = audio.createDelay();
+const left = audio.createGain(), right = audio.createGain();
+left.gain.value = right.gain.value = -1;
+this.feedback = audio.createGain();
+this.feedback.gain.value = 0;
+
+this.input.connect(this.filter).connect(s);
+s.connect(left, 0).connect(this.leftDelay).connect(m, 0,1);
+s.connect(right, 1).connect(this.rightDelay).connect(m, 0,0);
+m.connect(this.wet);
+this.wet.connect(this.feedback).connect(this.input);
+} // constructor
+} // class Xtc

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta charset="utf-8">
-<title>pannernode test</title>
+<title>Phaser</title>
 <style>
 label {display: block;}
 </style>
@@ -30,15 +30,7 @@ label {display: block;}
 </div>
 
 <div id="parameters">
-<div>
 <label>bypass <input type="checkbox" id="bypass" accesskey="z"></label></div>
-
-<div id="position">
-<h2>Position</h2>
-<label>panning model: <input type="text" id="panningModel" value="HRTF"></label>
-<label>angle: <input type="range" id="angle" data-group="position" value="10" min="0" step="0.02" accesskey="a"></label>
-<label>radius: <input type="range" id="radius" data-group="position" value="0.1" min="-10" max="10" step="0.01"></label>
-</div>
 
 <div id="automation">
 <h2>Automation</h2>
@@ -51,15 +43,22 @@ label {display: block;}
 
 </div>
 
+<div id="phaser">
+<h2>Phaser</h2>
+
+<label>mix: <input type="range" id="mix" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
+<label>configuration (series / parallel): <input type="text" id="configuration"></label>
+<label>frequency: <input type="range" id="frequency" value="6000" min="40" max="10000" step="20"></label>
+<label>q: <input type="range" id="q" value=".3" min="0" max="8" step="0.1" accesskey="q"></label>
+<label>delay: <input type="range" id="delay" value="0.00003" min="0" max="1" step="0.000020" accesskey="d"></label>
+</div>
+
 <div id="xtc">
 <h2>XTC</h2>
 
-<label>binaural / unprocessed mix: <input type="range" id="mix-binaural-unprocessed" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
 <label>xtc  mix: <input type="range" id="mix-xtc" value="0" min="0" max="1" step="0.1"></label>
 <label>feedback: <input type="range" id="feedback" value="0" min="-1" max="1" step="0.1" accesskey="b"></label>
 <label>type: <input type="text" id="type" value="bandpass"t" accesskey="t"></label>
-<label>frequency: <input type="range" id="frequency" value="6000" min="40" max="10000" step="20"></label>
-<label>q: <input type="range" id="q" value=".3" min="0" max="8" step="0.1" accesskey="q"></label>
 <label>delay: <input type="range" id="delay" value="0.00003" min="0" max="1" step="0.000020" accesskey="d"></label>
 </div><!-- #xtc -->
 
@@ -82,8 +81,7 @@ label {display: block;}
 
 <div id="message" aria-live="polite"></div>
 
-<script src="delay.js"></script>
-<script src="resonance-audio.min.js"></script>
+<script src="component.js"></script>
 <script src="ui.js"></script>
 <script>
 /// Globals
@@ -91,88 +89,21 @@ label {display: block;}
 const messageDisplayTime = 15; // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
-
-const fdProcessor = new FractionalDelay(audio.sampleRate, 1.0);
-const room = createRoom(createScene());
+const player = audio.createMediaElementSource (audioElement);
+const phaser = new Phaser(audio);
+const xtc = new Xtc(audio);
+const limiter = audio.createDynamicsCompressor();
+const masterInput = audio.createGain(), masterOutput = audio.createGain();
 const automation = {};
 let projects = [];
 let projectName = "default.txt";
 
-/// create nodes
-const player = audio.createMediaElementSource (audioElement);
-const masterIn = audio.createGain(), masterOut = audio.createGain();
-const masterLimiter = audio.createDynamicsCompressor();
-const reverbDry = audio.createGain();
-const reverbWet = audio.createGain();
-const reverbIn = audio.createGain();
-const reverbOut = audio.createGain();
-const binauralDry = audio.createGain();
-const binauralWet = audio.createGain();
-const binauralIn = audio.createGain();
-const binauralOut = audio.createGain();
-const leftPanner = audio.createPanner(), rightPanner = audio.createPanner();
+/// connections
+player.connect(masterInput);
+masterInput.connect(phaser.input);
+phaser.output.connect(masterOutput);
+masterOutput.connect(limiter).connect(audio.destination);
 
-
-const s = audio.createChannelSplitter(2);
-const m = audio.createChannelMerger(2);
-
-
-/// binaural connections
-player.connect(masterIn)
-
-createReverb(audio, room, reverbIn, reverbOut);
-masterIn.connect(reverbIn);
-reverbOut.connect(masterOut);
-
-masterIn.connect(binauralIn);
-binauralIn.connect(binauralDry);
-binauralIn.connect(s);
-
-s.connect(leftPanner, 0).connect(binauralWet);
-s.connect(rightPanner, 1).connect(binauralWet);
-
-binauralDry.connect(binauralOut);
-binauralWet.connect(binauralOut);
-
-/// xtc
-const xtcIn = audio.createGain();
-const xtcOut = audio.createGain();
-const xWet = audio.createGain();
-const xDry = audio.createGain();
-const l = audio.createGain();
-const r = audio.createGain();
-const xs = audio.createChannelSplitter(2);
-const xm = audio.createChannelMerger(2);
-const xf = audio.createBiquadFilter();
-const xdl = audio.createDelay();
-const xdr = audio.createDelay();
-const xLFeedback = audio.createGain(), xRFeedback = audio.createGain();
-
-// xtc connections
-
-binauralOut.connect(xtcIn);
-
-xtcIn.connect(xDry);
-xtcIn.connect(xf).connect(xs);
-
-xs.connect(l, 0,0).connect(xdl).connect(xm, 0,1); // merged into right channel
-xs.connect(r, 1,0).connect(xdr).connect(xm, 0,0); // merged into left channel
-
-xdl.connect(xLFeedback).connect(rightPanner);
-xdr.connect(xRFeedback).connect(leftPanner);
-
-xm.connect(xWet);
-
-xDry.connect(xtcOut);
-xWet.connect(xtcOut);
-xtcOut.connect(masterOut);
-
-masterOut.connect(masterLimiter).connect(audio.destination);
-
-// set values
-leftPanner.panningModel = rightPanner.panningModel = "HRTF";
-leftPanner.refDistance = rightPanner.refDistance = 10;
-l.gain.value = r.gain.value = -1;
 
 
 /// initialize
@@ -250,11 +181,6 @@ function update (id, value) {
 if (!id) return;
 
 const map = {
-reverbMix: function (id, value) {
-reverbWet.gain.value = value;
-reverbDry .gain.value = 1 - value;
-},
-
 delete: function (id, value) {
 deleteProject(ui("projects").selectedIndex);
 if (projects.length > 0) {
@@ -262,7 +188,6 @@ loadProject(projects[0]);
 message(`Project ${project.name} loaded.`);
 } // if
 },
-
 
 projects: function (id, value) {
 if (value) loadProject(getProject(value));
@@ -273,18 +198,32 @@ projectName = value;
 },
 
 
-threshold: masterLimiter.threshold,
-knee: masterLimiter.knee,
-ratio: masterLimiter.ratio,
-attack: masterLimiter.attack,
-release: masterLimiter.release,
-bypass: (id, value) => bypass(value),
+threshold: limiter.threshold,
+knee: limiter.knee,
+ratio: limiter.ratio,
+attack: limiter.attack,
+release: limiter.release,
+//bypass: (id, value) => bypass(value),
+frequency: function (id, value) {
+phaser.filters.forEach(f => f.frequency.value = value);
+},
+q: function (id, value) {
+phaser.filters.forEach(f => f.Q.value = value);
+},
 
-angle: updatePosition,
-radius: updatePosition,
-delay: function (id, value) {
-fdProcessor.setDelay(Number(value));
-}, // delay
+
+delay: [phaser.delay.delayTime, xtc.leftDelay.delayTime, xtc.rightDelay.delayTime],
+
+mix: function (id, value) {phaser.mix(value);},
+"mix-xtc": function (id, value) {xtc.mix(value);},
+
+configuration: function (id, value) {
+switch (value) {
+case "series": phaser.series(); return;
+case "parallel": phaser.parallel(); return;
+default: message(`configure: ${value} is an invalid option`); return;
+} // switch
+}, // configuration
 
 enableAutomation: function (id, value) {
 automation.enabled = value;
@@ -320,26 +259,6 @@ const parameter = automation.parameters.get(parameterName);
 parameter.enabled = value;
 //console.log("automate: ", value, parameter);
 }, // automate
-
-tick: [automation],
-
-feedback: [xLFeedback.gain, xRFeedback.gain],
-type: [xf],
-frequency: [xf.frequency],
-q: [xf.Q],
-panningModel: [leftPanner, rightPanner],
-
-"mix-binaural-unprocessed": function (id, value) {
-binauralDry.gain.value = 1 - value;
-binauralWet.gain.value = value;
-//binauralOut.gain.value = 1 + .2 * value;
-},
-
-"mix-xtc": function (id, value) {
-xDry.gain.value = 1 - value;
-xWet.gain.value = value;
-xtcOut.gain.value = 1 + (2.5 * value);
-} // mix-xtc
 }; // map
 
 return run(map[id], id, value);
@@ -380,38 +299,10 @@ player.connect(audio.destination);
 message("Bypassed...");
 } else {
 player.disconnect();
-player.connect(masterIn);
+player.connect(masterInput);
 } // if
 } // bypass
-
-function updatePosition (id, value) {
-console.log("updatePosition: ", id, value);
-const a = id === "angle"? value : getValue("angle");
-const r = id === "radius"? value : getValue("radius");
-setPosition(a, r);
-} // updatePosition
-
-
-function updateRotator (id, value) {
-const prop = id;
-rotator[prop] = value;
-rotator.updateRotMtx();
-} // updateRotator
-
 } // update
-
-function setPosition (a, r) {
-//console.log("setPosition: ", a, r);
-leftPanner.positionX.value = r*Math.cos(a);
-leftPanner.positionY.value = r*Math.sin(a);
-leftPanner.positionZ = Math.sin(a + r) * Math.cos(a - r);
-//leftPanner.positionZ.value = r*Math.cos(a+r/3+r/6+r/9);
-
-rightPanner.positionX.value = r*Math.sin(-1*a);
-rightPanner.positionY.value = r*Math.cos(-1*a);
-rightPanner.positionZ = Math.cos(a + r) * Math.sin(a - r);
-//rightPanner.positionZ.value = r*Math.sin(-1*a-r/3+r/6-r/9);
-} // setPosition
 
 
 /// automation

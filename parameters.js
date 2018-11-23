@@ -1,3 +1,12 @@
+const defaultParameter = {
+name: "",
+type: "", value: null,
+min: 0, max: 1,
+ui: null,
+updater: function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
+automator: null,
+}; // defaultParameter
+
 const parameterData = [{
 name: "mix",
 }, {
@@ -13,48 +22,38 @@ name: "feedback",
 min: -1,
 }, {
 name: "delay"
-}];
+}, {
+name: "filterType", type: "select",
+values: ["lowpass", "highpass", "bandpass",
+"lowshelf", "highshelf",
+"peaking", "notch",
+"allpass"]
+}]; // parameterData
 
-function initializeParameters(parameterData) {
-automation.defaultParameter = {
-name: "",
-enabled: false,
-value: 0, min: 0, max: 1, step: 0.1,
-tickCount: 0,
-group: "",
-function: null,
-functionText: ""
-};
 
-automation.enabled = false;
-automation.tickCount = 0;
-automation.tick = 0.2; // seconds
-automation.parameters = new Map();
 
-automation.groups = new Map([
-["position", {
-name: "position",
-values: new Map(),
-function: function (values) {
-const r = values.has("radius")? values.get("radius") : getValue("radius");
-const a = values.has("angle")? values.get("angle") : getValue("angle");
-setPosition(a, r);
-} // function
-}] // position
-]); // groups
+function createParameterMap (parameterData) {
+const parameters = new Map();
+parameterData.forEach(data => {
+const p = Object.assign({}, defaultParameter, data);
+parameters.set(p.name, p);
+});
+return parameters;
+} // createParameterMap
 
-enumerateNumericControls().forEach(element => {
-automation.parameters.set(element.id, 
-Object.assign({}, automation.defaultParameter, {
-name: element.id,
-group: element.getAttribute("data-group") || ""
-}));
-}); // forEach
+function createUiControl (data) {
+if (!data.type && (data.min || data.max || data.step)) {
+element = document.createElement("input");
+element.type = data.type || "range";
 
-populateSelector(
-"parameterName", 
-Array.from(automation.parameters.entries())
-.map(binding => binding[0])
-) // populateSelector
-} // initializeAutomation
+} else if (data.type === "select" || data.values instanceof Array) {
+element = document.createElement("select");
+populateSelector(element, data.values);
+} // if
+
+const label = document.createElement("label");
+label.textContent = data.label || data.name;
+label.appendChild(element);
+return label;
+} // createUiControl
 

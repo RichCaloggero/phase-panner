@@ -1,19 +1,27 @@
 function populateSelector(id, items) {
-const element = ui(id);
+const element = (id instanceof HTMLElement)? id : ui(id);
 if (element) {
 element.innerHTML = "";
 items.forEach(item => {
 let key, value;
-if (typeof(item) === "string" || typeof(item) === "number") {
-key = value = item;
-} else if (item instanceof Array) {
+if (item instanceof Array) {
 key = item[0];
 value = item[1];
+} else if (typeof(item) === "string" || typeof(item) === "number") {
+key = value = item;
 } // if
 
 element.add(createOption(key, value));
 }); // forEach
 } // if
+
+
+function createOption(value, text) {
+const element = document.createElement("option");
+element.value = value;
+element.textContent = text;
+return element;
+} // createOption
 } // populateSelector
 
 function getValue (elementOrId) {
@@ -47,7 +55,7 @@ element.dispatchEvent(new CustomEvent(eventName, {bubbles: true}));
 } // signal
 
 
-function ui(id) {
+function ui (id) {
 return id? document.getElementById(id)
 : null;
 } // ui

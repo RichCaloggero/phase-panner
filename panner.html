@@ -57,7 +57,16 @@ label {display: block;}
 <label>binaural / unprocessed mix: <input type="range" id="mix-binaural-unprocessed" value="0" min="0" max="1" step="0.1" accesskey="m"></label>
 <label>xtc  mix: <input type="range" id="mix-xtc" value="0" min="0" max="1" step="0.1"></label>
 <label>feedback: <input type="range" id="feedback" value="0" min="-1" max="1" step="0.1" accesskey="b"></label>
-<label>type: <input type="text" id="type" value="bandpass"t" accesskey="t"></label>
+<label>type: <select id="type"  accesskey="t">
+<option value="lowpass">low pass</option>
+<option value="highpass">high pass</option>
+<option value="bandpass">band pass</option>
+<option value="lowshelf">low shelf</option>
+<option value="highshelf">low pass</option>
+<option value="peaking">peaking</option>
+<option value="notch">notch</option>
+<option value="allpass">all pass</option>
+</select></label>
 <label>frequency: <input type="range" id="frequency" value="6000" min="40" max="10000" step="20"></label>
 <label>q: <input type="range" id="q" value=".3" min="0" max="8" step="0.1" accesskey="q"></label>
 <label>delay: <input type="range" id="delay" value="0.00003" min="0" max="1" step="0.000020" accesskey="d"></label>
@@ -120,10 +129,10 @@ const m = audio.createChannelMerger(2);
 /// binaural connections
 player.connect(masterIn)
 
-createReverb(audio, room, reverbIn, reverbOut);
+/*createReverb(audio, room, reverbIn, reverbOut);
 masterIn.connect(reverbIn);
 reverbOut.connect(masterOut);
-
+*/
 masterIn.connect(binauralIn);
 binauralIn.connect(binauralDry);
 binauralIn.connect(s);
@@ -385,7 +394,7 @@ player.connect(masterIn);
 } // bypass
 
 function updatePosition (id, value) {
-console.log("updatePosition: ", id, value);
+//console.log("updatePosition: ", id, value);
 const a = id === "angle"? value : getValue("angle");
 const r = id === "radius"? value : getValue("radius");
 setPosition(a, r);
@@ -404,13 +413,13 @@ function setPosition (a, r) {
 //console.log("setPosition: ", a, r);
 leftPanner.positionX.value = r*Math.cos(a);
 leftPanner.positionY.value = r*Math.sin(a);
-leftPanner.positionZ = Math.sin(a + r) * Math.cos(a - r);
-//leftPanner.positionZ.value = r*Math.cos(a+r/3+r/6+r/9);
+//leftPanner.positionZ = Math.sin(a + r) * Math.cos(a - r);
+leftPanner.positionZ.value = r*Math.cos(a+r/3+r/6+r/9);
 
 rightPanner.positionX.value = r*Math.sin(-1*a);
 rightPanner.positionY.value = r*Math.cos(-1*a);
-rightPanner.positionZ = Math.cos(a + r) * Math.sin(a - r);
-//rightPanner.positionZ.value = r*Math.sin(-1*a-r/3+r/6-r/9);
+//rightPanner.positionZ = Math.cos(a + r) * Math.sin(a - r);
+rightPanner.positionZ.value = r*Math.sin(-1*a-r/3+r/6-r/9);
 } // setPosition
 
 

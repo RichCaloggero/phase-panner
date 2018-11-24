@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta charset="utf-8">
-<title>Audio</title>
+<title>reverb</title>
 <style>
 label {display: block;}
 </style>
 </head>
 
 <body>
-<h1>Test</h1>
+<h1>reverb test</h1>
 
 <div id="controls">
 <div id="audio">
 <h2>Audio</h2>
-<label>audio: <input type="text" id="audioFile" accesskey="f"></label>
+<label>audio: <input type="text" id="media" accesskey="f"></label>
 <button id="load" accesskey="l">Load</button>
 <audio tabindex="0"  accesskey="a" controls></audio>
 </div>
 
 <div id="parameters">
-<label>Parameter: <select id="parameterList"></select></label>
+<label>Parameter: <select id="parameterList" accesskey="p"></select></label>
 <label>value: <span class="value"></span>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
 <label>automation shape: <select id="automationShape"></select></label>
@@ -30,45 +30,100 @@ label {display: block;}
 
 <div id="message" aria-live="polite"></div>
 
+<script src="resonance-audio.min.js"></script>
 <script src="ui.js"></script>
+<script src="component.js"></script>
+<script src="reverb.js"></script>
 <script src="parameters.js"></script>
+<script src="parameterData.js"></script>
 <script>
+const audio = new AudioContext();
+const audioElement = document.querySelector("audio");
+const player = audio.createMediaElementSource (audioElement);
+const reverb = new Reverb(audio, createScene());
+const room = {};
+
+/// connections
+player.connect(reverb.input);
+reverb.output.connect(audio.destination);
+
+
+/// initialize
+
 const parameters = createParameterMap(parameterData);
 console.log(`created ${parameters.size} parameters`);
-ui("parameters").addEventListener("change", e => update(e.target.value, e.target, e));
-populateSelector (ui("parameterList"), Array.from(parameters.keys()));
+populateSelector (
+ui("parameterList"),
+Array.from(parameters.keys())
+.filter(key => parameters.get(key).list)
+); // populateSelector
+
+populateSelector(ui("automationShape"), "sine, square, sawtooth, triangle".split(", "));
+
+/// events
+
+ui("controls").addEventListener("change", e => update(e.target.value, e.target, e));
+
+ui("controls").addEventListener("keydown", (e) => {
+if (e.key === "0" && e.target.type && e.target.type === "range") {
+e.target.value = 0;
+signal(e.target);
+e.target.focus();
+} // if
+
+if (e.key === "Enter" && e.target.type === "text") signal(e.target);
+}); // special keys
+
+
+/// updating
 
 function update (value, element, e) {
-if (element === ui("parameterList")) display(parameters.get(value));
-else updateValue (value);
+_update(
+element.type === "number" || element.type === "range"?
+Number(value) : value,
+element
+); // _update
 
-function display (parameter) {
-console.log(`displaying ${parameter.name}...`);
-const element = createUiControl(parameter);
-const container = document.querySelector("#parameters .value");
-container.innerHTML = "";
-container.appendChild(element);
-} // display
 
-function updateValue (value) {
-const parameter = parameters.get(getParameterName());
+function _update (value, element) {
+let parameter = parameters.get(element.id);
+if (!parameter || parameter.list) parameter = parameters.get(getParameterName());
 parameter.value = value;
-_update(parameter.updater, value);
+if (parameter && parameter.updater) run(parameter.updater, value);
 
-function _update (updater, value) {
+function run(updater, value) {
+if (!updater) return;
+try {
 if (updater instanceof Function) {
 updater (value);
 } else if (typeof(updater) === "object" && !(updater instanceof Array)) {
+
+// special cases
 if ("value" in updater) updater.value = value;
 else if (element.id in updater) updater[element.id] = value;
 else throw new Error(`cannot update: ${parameter.name} to ${value} with ${updater}`);
 
 } else if (updater instanceof Array) {
-updater.forEach(_updater => _update(_updater, value));
+updater.forEach(updater => run(updater, value));
 } // if
+
+} catch (e) {
+console.log(`update: ${e}\n
+`);
+
+} // try
+} // run
 } // _update
-} // updateValue
 } // update
+
+function displayParameter (parameter) {
+console.log(`displaying ${parameter.name}...`);
+const element = createUiControl(parameter);
+const container = document.querySelector("#parameters .value");
+container.innerHTML = "";
+container.appendChild(element);
+} // displayParameter
+
 
 function getParameterName () {
 return ui("parameterList").value;

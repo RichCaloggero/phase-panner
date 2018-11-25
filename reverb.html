@@ -44,10 +44,13 @@ const player = audio.createMediaElementSource (audioElement);
 const scene = Reverb.createScene();
 const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
+const projectList = [];
+const project = {};
+
 reverb.updateRoom(room);
 reverb.setPosition(
-[-99,0,0],
-[99,0,0]
+[-room.dimensions.width/2,0,0],
+[room.dimensions.width/2,0,0]
 ); // initial position
 
 /// connections
@@ -88,19 +91,21 @@ signal(e.target);
 /// updating
 
 function update (value, element, e) {
-console.log(`update: ${value}`);
-try {
+console.log("update: ", value);
+//try {
 value = value.trim();
 if (element.type === "range" || element.type === "number") {
 value = Number(value);
-} else if (value.startsWith("[") || value.startsWith("{")) {
-value = JSON.parse(value);
+//} else if (value.startsWith("[") || value.startsWith("{")) {
+//console.log(`- parsing:  ${value.length}, ${value}`);
+//value = JSON.parse(value);
 } // if	
 
 _update(value, element); // _update
-} catch (e) {
+/*} catch (e) {
 message(e);
 } // try
+*/
 
 
 function _update (value, element) {
@@ -114,27 +119,22 @@ run(parameter.updater, value);
 
 function run(updater, value) {
 if (!updater) return;
-try {
 if (updater instanceof Function) {
-updater (value);
+try {updater (value);}
+catch (e) {message(e);}
+
 } else if (typeof(updater) === "object" && !(updater instanceof Array)) {
 
 // special cases
+// if updater has a key of "value", then assign value to that key
 if ("value" in updater) updater.value = value;
-else if (element.id in updater) updater[element.id] = value;
+// else if element has an id whose value is a key in updater, then assign value to that key
+else if (element && element.id && element.id in updater) updater[element.id] = value;
 else throw new Error(`cannot update: ${parameter.name} to ${value} with ${updater}`);
 
 } else if (updater instanceof Array) {
 updater.forEach(updater => run(updater, value));
 } // if
-
-} catch (e) {
-console.log(`update: ${e}\n
-${e.stack}\n
-`);
-
-} // try
-
 } // run
 } // _update
 } // update
@@ -146,10 +146,10 @@ applyConstraints(element, parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";
 container.appendChild(element);
+message(`${parameter.name}: ${parameter.value}`);
 } // displayParameter
 
 function applyConstraints (element, parameter) {
-
 } // applyConstraints
 
 function getParameterName () {

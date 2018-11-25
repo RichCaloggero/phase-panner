@@ -83,6 +83,7 @@ try {
 const dimensions = JSON.parse(value);
 room.dimensions = Object.assign({}, dimensions);
 reverb.updateRoom(room);
+
 message(`new dimensions: ${Reverb.displayDimensions(dimensions)}`);
 } catch (e) {
 message(`cannot parse dimensions: ${e}\n${e.stack}`);

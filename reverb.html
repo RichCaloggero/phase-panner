@@ -37,12 +37,13 @@ label {display: block;}
 <script src="parameters.js"></script>
 <script src="parameterData.js"></script>
 <script>
+const messageDisplayTime = 20; // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
 const player = audio.createMediaElementSource (audioElement);
-const scene = createScene();
+const scene = Reverb.createScene();
 const reverb = new Reverb(audio, scene);
-const room = defaultRoom();
+const room = Reverb.defaultRoom();
 reverb.updateRoom(room);
 reverb.setPosition(
 [-99,0,0],
@@ -60,8 +61,10 @@ const parameters = createParameterMap(parameterData);
 console.log(`created ${parameters.size} parameters`);
 populateSelector (
 ui("parameterList"),
-Array.from(parameters.keys())
-.filter(key => parameters.get(key).list)
+Array.from(parameters.keys()).filter(key => {
+const parameter = parameters.get(key);
+return (parameter.list && parameter.updater);
+}) // filter
 ); // populateSelector
 
 populateSelector(ui("automationShape"), "sine, square, sawtooth, triangle".split(", "));
@@ -75,20 +78,29 @@ if (e.key === "0" && e.target.type && e.target.type === "range") {
 e.target.value = 0;
 signal(e.target);
 e.target.focus();
-} // if
 
-if (e.key === "Enter" && e.target.type === "text") signal(e.target);
+} else if (e.key === "Enter" && e.target.type === "text") {
+signal(e.target);
+} // if
 }); // special keys
 
 
 /// updating
 
 function update (value, element, e) {
-_update(
-element.type === "number" || element.type === "range"?
-Number(value) : value,
-element
-); // _update
+console.log(`update: ${value}`);
+try {
+value = value.trim();
+if (element.type === "range" || element.type === "number") {
+value = Number(value);
+} else if (value.startsWith("[") || value.startsWith("{")) {
+value = JSON.parse(value);
+} // if	
+
+_update(value, element); // _update
+} catch (e) {
+message(e);
+} // try
 
 
 function _update (value, element) {
@@ -96,7 +108,9 @@ let parameter = parameters.get(element.id);
 if (!parameter || parameter.list) parameter = parameters.get(getParameterName());
 parameter.value = value;
 parameter.selectedIndex = element.selectedIndex;
-if (parameter && parameter.updater) run(parameter.updater, value);
+if (parameter && parameter.updater) {
+run(parameter.updater, value);
+} // if
 
 function run(updater, value) {
 if (!updater) return;
@@ -116,9 +130,11 @@ updater.forEach(updater => run(updater, value));
 
 } catch (e) {
 console.log(`update: ${e}\n
+${e.stack}\n
 `);
 
 } // try
+
 } // run
 } // _update
 } // update
@@ -126,15 +142,31 @@ console.log(`update: ${e}\n
 function displayParameter (parameter) {
 console.log(`displaying ${parameter.name}...`);
 const element = createUiControl(parameter);
+applyConstraints(element, parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";
 container.appendChild(element);
 } // displayParameter
 
+function applyConstraints (element, parameter) {
+
+} // applyConstraints
 
 function getParameterName () {
 return ui("parameterList").value;
 } // getParameterName
+
+function message (...args) {
+_message(args.join(", "));
+
+function _message (text) {
+const container = document.querySelector("#message");
+container.textContent = text;
+setTimeout(() => container.textContent = "", 1000 * messageDisplayTime);
+return text;
+} // _message
+} // message
+
 </script>
 
 </body>

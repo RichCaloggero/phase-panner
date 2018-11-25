@@ -74,7 +74,11 @@ populateSelector(ui("automationShape"), "sine, square, sawtooth, triangle".split
 
 /// events
 
-ui("controls").addEventListener("change", e => update(e.target.value, e.target, e));
+ui("controls").addEventListener("change",
+e => update(e.target.value,
+e.target.id? e.target.id : getParameterName(),
+e.target)
+);
 
 ui("controls").addEventListener("keydown", (e) => {
 if (e.key === "0" && e.target.type && e.target.type === "range") {
@@ -90,38 +94,34 @@ signal(e.target);
 
 /// updating
 
-function update (value, element, e) {
-console.log("update: ", value);
-//try {
+function update (value, parameterName, element) {
+console.log("update: ", value, parameterName);
+if (! parameterName) return;
+const parameter = parameters.get(
+parameters.has(parameterName)?
+parameterName : getParameterName()
+); // parameters.get
+console.log("- parameter: ", parameter.name, " is type ", parameter.type);
+
 value = value.trim();
-if (element.type === "range" || element.type === "number") {
+if (parameter.type === "range" || parameter.type === "number") {
 value = Number(value);
-//} else if (value.startsWith("[") || value.startsWith("{")) {
-//console.log(`- parsing:  ${value.length}, ${value}`);
-//value = JSON.parse(value);
 } // if	
 
-_update(value, element); // _update
-/*} catch (e) {
-message(e);
-} // try
-*/
-
-
-function _update (value, element) {
-let parameter = parameters.get(element.id);
-if (!parameter || parameter.list) parameter = parameters.get(getParameterName());
+// cache values
 parameter.value = value;
 parameter.selectedIndex = element.selectedIndex;
+
 if (parameter && parameter.updater) {
 run(parameter.updater, value);
 } // if
+
 
 function run(updater, value) {
 if (!updater) return;
 if (updater instanceof Function) {
 try {updater (value);}
-catch (e) {message(e);}
+catch (e) {message(`OOPS: ${e}`);}
 
 } else if (typeof(updater) === "object" && !(updater instanceof Array)) {
 
@@ -136,7 +136,6 @@ else throw new Error(`cannot update: ${parameter.name} to ${value} with ${update
 updater.forEach(updater => run(updater, value));
 } // if
 } // run
-} // _update
 } // update
 
 function displayParameter (parameter) {

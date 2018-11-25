@@ -40,8 +40,14 @@ label {display: block;}
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
 const player = audio.createMediaElementSource (audioElement);
-const reverb = new Reverb(audio, createScene());
-const room = {};
+const scene = createScene();
+const reverb = new Reverb(audio, scene);
+const room = defaultRoom();
+reverb.updateRoom(room);
+reverb.setPosition(
+[-99,0,0],
+[99,0,0]
+); // initial position
 
 /// connections
 player.connect(reverb.input);
@@ -89,6 +95,7 @@ function _update (value, element) {
 let parameter = parameters.get(element.id);
 if (!parameter || parameter.list) parameter = parameters.get(getParameterName());
 parameter.value = value;
+parameter.selectedIndex = element.selectedIndex;
 if (parameter && parameter.updater) run(parameter.updater, value);
 
 function run(updater, value) {

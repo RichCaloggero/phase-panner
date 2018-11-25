@@ -2,6 +2,7 @@ const defaultParameter = {
 name: "", list: true,
 type: "", value: null,
 value: 0, min: 0, max: 1, step: 0.1,
+selectedIndex: 0,
 ui: null,
 updater: function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
 automator: null,
@@ -30,9 +31,10 @@ step: data.step,
 value: data.value
 }); // assign
 
-} else if (data.type === "select" || data.values instanceof Array) {
+} else if (data.type === "select" || data.options instanceof Array) {
 element = document.createElement("select");
-populateSelector(element, data.values);
+populateSelector(element, data.options);
+element.selectedIndex = data.selectedIndex;
 } // if
 
 const label = document.createElement("label");

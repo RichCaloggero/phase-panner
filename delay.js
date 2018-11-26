@@ -92,8 +92,8 @@ if (this.fracDelay === 0) {
 return outputBuffer;
 } else {
 // The fractional delay process section
-outputBuffer = this.fractionalThiranProcess(outputBuffer);
-//outputBuffer = new Float32Array(this.fractionalThiranProcess(outputBuffer));
+//outputBuffer = this.fractionalThiranProcess(outputBuffer);
+outputBuffer = new Float32Array(this.fractionalThiranProcess(outputBuffer));
 return outputBuffer;
 } // if
 } // process

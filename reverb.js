@@ -67,9 +67,9 @@ return [
 // make a room
 static defaultRoom () {
 const defaultDimensions = {
-width: 100,
-height: 100,
-depth: 100
+width: 4,
+height: 2.2,
+depth: 3.1
 }; // dimensions
 
 const defaultMaterials = {

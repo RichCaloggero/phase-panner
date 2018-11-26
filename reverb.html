@@ -22,7 +22,7 @@ label {display: block;}
 
 <div id="parameters">
 <label>Parameter: <select id="parameterList" accesskey="p"></select></label>
-<label>value: <span class="value"></span>
+value: <span class="value"></span>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
 <label>automation shape: <select id="automationShape"></select></label>
 </div><!-- #parameters -->
@@ -52,6 +52,9 @@ reverb.setPosition(
 [-room.dimensions.width/2,0,0],
 [room.dimensions.width/2,0,0]
 ); // initial position
+reverb.source.left.setOrientation(1,0,0, 0,1,0);
+reverb.source.right.setOrientation(-1,0,0, 0,1,0);
+[reverb.source.left, reverb.source.right].forEach(source => source.setRolloff("none"));
 
 /// connections
 player.connect(reverb.input);
@@ -88,6 +91,30 @@ e.target.focus();
 
 } else if (e.key === "Enter" && e.target.type === "text") {
 signal(e.target);
+
+} else if (e.target.tagName.toLowerCase() === "button" && e.key.includes("Arrow")) {
+let value = e.target.getAttribute("data-value");
+console.log("parsing ", value);
+try {
+value = JSON.parse(value);
+} catch (e) {
+message(`${e}\n${e.stack}`);
+return;
+} // try
+
+switch (e.key) {
+case "ArrowUp": value = modify(value, 1, 1); break;
+case "ArrowDown": value = modify(value, 1, -1); break;
+
+case "ArrowLeft": value = modify(value, 0, -1); break;
+case "ArrowRight": value = modify(value, 0, 1); break;
+default: return;
+} // switch
+
+e.target.setAttribute("data-value", JSON.stringify(value));
+e.preventDefault();
+signal(e.target);
+console.log("- new value ", value);
 } // if
 }); // special keys
 
@@ -106,6 +133,8 @@ console.log("- parameter: ", parameter.name, " is type ", parameter.type);
 value = value.trim();
 if (parameter.type === "range" || parameter.type === "number") {
 value = Number(value);
+} else if (parameter.type === "custom") {
+value = element.getAttribute("data-value");
 } // if	
 
 // cache values
@@ -141,19 +170,41 @@ updater.forEach(updater => run(updater, value));
 function displayParameter (parameter) {
 console.log(`displaying ${parameter.name}...`);
 const element = createUiControl(parameter);
-applyConstraints(element, parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";
 container.appendChild(element);
+applyConstraints(container, element, parameter);
 message(`${parameter.name}: ${parameter.value}`);
 } // displayParameter
 
-function applyConstraints (element, parameter) {
+function applyConstraints (container, element, parameter) {
+container.removeAttribute("role");
+
+if (parameter.type === "custom") {
+if (parameter.role) container.setAttribute("role", parameter.role);
+} // if
 } // applyConstraints
 
 function getParameterName () {
 return ui("parameterList").value;
 } // getParameterName
+
+
+function modify(vector, index, n) {
+if (vector instanceof Array) {
+vector = vector.slice();
+if (index >= 0 && index < vector.length) {
+vector[index] += n;
+} else {
+message(`index must be between 0 and ${vector.length-1}`);
+} // if
+
+} else {
+message(`first argument must be a vector`);
+} // if
+
+return vector;
+} // modify
 
 function message (...args) {
 _message(args.join(", "));

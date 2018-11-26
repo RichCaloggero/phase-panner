@@ -1,11 +1,10 @@
 const defaultParameter = {
 name: "", list: true,
-type: "range", value: null,
+type: "range",
 value: 0, min: 0, max: 1, step: 0.1,
 selectedIndex: 0,
-ui: null,
 updater: function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
-automator: null,
+automator: {type: "sine", frequency: 0.5},
 }; // defaultParameter
 
 
@@ -22,6 +21,12 @@ return parameters;
 
 function createUiControl (data) {
 let element;
+if (data.type === "custom" && data.elementName) {
+element = document.createElement(data.elementName);
+element.setAttribute("data-value", data.value);
+return element;
+} // if
+
 if (data.type === "select" || data.options instanceof Array) {
 element = document.createElement("select");
 populateSelector(element, data.options);

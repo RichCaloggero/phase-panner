@@ -99,14 +99,29 @@ message(`Dimensions: ${Reverb.displayDimensions(dimensions)}`);
 }, 200);
 },
 }, {
-name: "rotate",
+name: "leftPosition", type: "custom", elementName: "button", role: "application",
+value: "[-2,0,0]",
+updater: function (value) {
+value = JSON.parse(value);
+reverb.source.left.setPosition(value[0], value[1], value[2]);
+},
+}, {
+name: "rightPosition", type: "custom", elementName: "button", role: "application",
+value: "[2,0,0]",
+updater: function (value) {
+value = JSON.parse(value);
+reverb.source.right.setPosition(value[0], value[1], value[2]);
+},
+}, {
+name: "rotate", type: "text",
 value: 0, min: -180, max: 180, step: 1,
 updater: function (value) {
-value = (Math.PI/180) * value;
-const x = Math.cos(value);
-const z = Math.sin(value);
-const y = 0;
-scene.setListenerOrientation(x,y,z, 0,1,0);
+try {
+value = JSON.parse(value);
+scene.setListenerOrientation.apply(scene, value);
+} catch (e) {
+message(`rotate: ${e}`);
+} // try
 },
 }, {
 name: "sharpness",

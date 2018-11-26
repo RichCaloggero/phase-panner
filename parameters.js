@@ -24,6 +24,7 @@ let element;
 if (data.type === "custom" && data.elementName) {
 element = document.createElement(data.elementName);
 element.setAttribute("data-value", data.value);
+element.classList.add(data.class);
 return element;
 } // if
 

@@ -89,12 +89,17 @@ e.target.value = 0;
 signal(e.target);
 e.target.focus();
 
+} else if (e.key === "0" && e.target.classList.contains("vector")) {
+e.target.setAttribute("data-value", "[0,0,0]");
+
 } else if (e.key === "Enter" && e.target.type === "text") {
 signal(e.target);
 
-} else if (e.target.tagName.toLowerCase() === "button" && e.key.includes("Arrow")) {
+} else if (e.key.includes("Arrow") && e.target.matches("button.vector")) {
+const parameter = parameters.get(getParameterName());
 let value = e.target.getAttribute("data-value");
-console.log("parsing ", value);
+let delta = parameter.step;
+
 try {
 value = JSON.parse(value);
 } catch (e) {
@@ -103,11 +108,11 @@ return;
 } // try
 
 switch (e.key) {
-case "ArrowUp": value = modify(value, 1, 1); break;
-case "ArrowDown": value = modify(value, 1, -1); break;
+case "ArrowUp": value = modify(value, 2, delta); break;
+case "ArrowDown": value = modify(value, 2, -1*delta); break;
 
-case "ArrowLeft": value = modify(value, 0, -1); break;
-case "ArrowRight": value = modify(value, 0, 1); break;
+case "ArrowLeft": value = modify(value, 0, -1*delta); break;
+case "ArrowRight": value = modify(value, 0, delta); break;
 default: return;
 } // switch
 

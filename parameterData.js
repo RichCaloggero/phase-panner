@@ -99,14 +99,14 @@ message(`Dimensions: ${Reverb.displayDimensions(dimensions)}`);
 }, 200);
 },
 }, {
-name: "leftPosition", type: "custom", elementName: "button", role: "application",
+name: "leftPosition", type: "custom", elementName: "button", role: "application", class: "vector",
 value: "[-2,0,0]",
 updater: function (value) {
 value = JSON.parse(value);
 reverb.source.left.setPosition(value[0], value[1], value[2]);
 },
 }, {
-name: "rightPosition", type: "custom", elementName: "button", role: "application",
+name: "rightPosition", type: "custom", elementName: "button", role: "application", class: "vector",
 value: "[2,0,0]",
 updater: function (value) {
 value = JSON.parse(value);

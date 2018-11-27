@@ -1,6 +1,8 @@
 const parameterData = [{
 name: "mix",
-updater: function (value) {reverb.mix(value)}
+updater: function (value) {
+reverb.mix(value);
+}
 }, {
 name: "media", type: "text", list: false,
 updater: function (value) {
@@ -8,13 +10,13 @@ audioElement.src = value;
 audioElement.play();
 },
 }, {
-name: "parameterList", list: false, type: "select",
+name: "parameterList", list: false, type: "select", selectedIndex: 0,
 updater: function (value) {
 displayParameter(parameters.get(value));
 },
 }, {
 name: "width",
-value: 0, max: 100,
+value: 3, max: 100,
 updater: function (value) {
 room.dimensions.width = value;
 reverb.updateRoom(room);
@@ -22,32 +24,35 @@ reverb.setPosition([-1*value/2,0,0], [value/2, 0,0]);
 },
 }, {
 name: "depth",
-value: 0, max: 100,
+value: 2.5, max: 100,
 updater: function (value) {
 room.dimensions.depth = value;
 reverb.updateRoom(room);
 },
 }, {
 name: "height",
-value: 0, max: 100,
+value: 3, max: 100,
 updater: function (value) {
 room.dimensions.height = value;
 reverb.updateRoom(room);
 },
 }, {
 name: "floor", type: "select", options: Reverb.materialsList(),
+selectedIndex: 6,
 updater: function (value) {
 room.materials.down = value;
 reverb.updateRoom(room);
 }
 }, {
 name: "ceiling", type: "select", options: Reverb.materialsList(),
+selectedIndex: 1,
 updater: function (value) {
 room.materials.up = value;
 reverb.updateRoom(room);
 }
 }, {
 name: "leftWall", type: "select",
+selectedIndex: 6,
 options: Reverb.materialsList(),
 updater: function (value) {
 room.materials.left = value;
@@ -56,6 +61,7 @@ reverb.updateRoom(room);
 }, {
 name: "rightWall", type: "select",
 options: Reverb.materialsList(),
+selectedIndex: 6,
 updater: function (value) {
 room.materials.right = value;
 reverb.updateRoom(room);
@@ -63,6 +69,7 @@ reverb.updateRoom(room);
 }, {
 name: "frontWall", type: "select",
 options: Reverb.materialsList(),
+selectedIndex: 6,
 updater: function (value) {
 room.materials.front = value;
 reverb.updateRoom(room);
@@ -70,6 +77,7 @@ reverb.updateRoom(room);
 }, {
 name: "backWall", type: "select",
 options: Reverb.materialsList(),
+selectedIndex: 6,
 updater: function (value) {
 room.materials.back = value;
 reverb.updateRoom(room);
@@ -93,7 +101,8 @@ message(`cannot parse dimensions: ${e}\n${e.stack}`);
 name: "roomSize",
 value: 1.0, max: 100,
 updater: function (value) {
-const dimensions = reverb.updateRoom(room, value).dimensions;
+reverb.setRoomSize(value);
+const dimensions = reverb.updateRoom(room).dimensions;
 setTimeout(() => {
 message(`Dimensions: ${Reverb.displayDimensions(dimensions)}`);
 }, 200);

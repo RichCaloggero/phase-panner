@@ -47,15 +47,6 @@ const room = Reverb.defaultRoom();
 const projectList = [];
 const project = {};
 
-reverb.updateRoom(room);
-reverb.setPosition(
-[-room.dimensions.width/2,0,0],
-[room.dimensions.width/2,0,0]
-); // initial position
-reverb.source.left.setOrientation(1,0,0, 0,1,0);
-reverb.source.right.setOrientation(-1,0,0, 0,1,0);
-[reverb.source.left, reverb.source.right].forEach(source => source.setRolloff("none"));
-
 /// connections
 player.connect(reverb.input);
 reverb.output.connect(audio.destination);
@@ -64,7 +55,7 @@ reverb.output.connect(audio.destination);
 /// initialize
 
 const parameters = createParameterMap(parameterData);
-console.log(`created ${parameters.size} parameters`);
+//console.log(`created ${parameters.size} parameters`);
 populateSelector (
 ui("parameterList"),
 Array.from(parameters.keys()).filter(key => {
@@ -75,17 +66,32 @@ return (parameter.list && parameter.updater);
 
 populateSelector(ui("automationShape"), "sine, square, sawtooth, triangle".split(", "));
 
+reverb.source.left.setOrientation(1,0,0, 0,1,0);
+reverb.source.right.setOrientation(-1,0,0, 0,1,0);
+[reverb.source.left, reverb.source.right].forEach(source => source.setRolloff("none"));
+
+updateAll();
+update(ui("parameterList")).focus();
+console.log("initialization complete.");
+
+/*reverb.updateRoom(room);
+reverb.setPosition(
+[-room.dimensions.width/2,0,0],
+[room.dimensions.width/2,0,0]
+); // initial position
+*/
+
+
 /// events
 
-ui("controls").addEventListener("change",
-e => update(e.target.value,
-e.target.id? e.target.id : getParameterName(),
-e.target)
-);
+ui("controls").addEventListener("change", e => {
+console.log("change event on ", e.target.id);
+update(e.target)
+});
 
 ui("controls").addEventListener("keydown", (e) => {
-if (e.key === "0" && e.target.type && e.target.type === "range") {
-e.target.value = 0;
+if ((e.key === "0" || e.key === "1") && e.target.type && e.target.type === "range") {
+e.target.value = e.key;
 signal(e.target);
 e.target.focus();
 
@@ -119,43 +125,56 @@ default: return;
 e.target.setAttribute("data-value", JSON.stringify(value));
 e.preventDefault();
 signal(e.target);
-console.log("- new value ", value);
+//console.log("- new value ", value);
 } // if
 }); // special keys
 
 
 /// updating
 
-function update (value, parameterName, element) {
-console.log("update: ", value, parameterName);
+function updateAll () {
+parameters.forEach(parameter => {
+if (parameter.list && parameter.name !== "dimensions" && parameter.name !== "rotate") _update(parameter);
+});
+} // updateAll
+
+function update (element) {
+console.log("update: ", element);
+const parameterName = element.id || getParameterName();
 if (! parameterName) return;
-const parameter = parameters.get(
-parameters.has(parameterName)?
-parameterName : getParameterName()
-); // parameters.get
+const parameter = parameters.get(parameterName);
 console.log("- parameter: ", parameter.name, " is type ", parameter.type);
 
-value = value.trim();
+let value = element.value.trim();
 if (parameter.type === "range" || parameter.type === "number") {
 value = Number(value);
 } else if (parameter.type === "custom") {
 value = element.getAttribute("data-value");
 } // if	
+console.log(`- ${parameter.name}, ${typeof(value)}, ${value}`);
 
 // cache values
 parameter.value = value;
 parameter.selectedIndex = element.selectedIndex;
 
 if (parameter && parameter.updater) {
-run(parameter.updater, value);
+_update(parameter);
 } // if
 
+return element;
+} // update
 
-function run(updater, value) {
+
+function _update (parameter) {
+//console.log(`_update: ${parameter.name}`);
+const updater = parameter.updater;
 if (!updater) return;
+const value = parameter.options? parameter.options[parameter.selectedIndex] : parameter.value;
+//console.log(`- ${typeof(updater)}, ${value}`);
+
 if (updater instanceof Function) {
 try {updater (value);}
-catch (e) {message(`OOPS: ${e}`);}
+catch (e) {message(`OOPS: ${e}\n${e.stack}`);}
 
 } else if (typeof(updater) === "object" && !(updater instanceof Array)) {
 
@@ -169,11 +188,10 @@ else throw new Error(`cannot update: ${parameter.name} to ${value} with ${update
 } else if (updater instanceof Array) {
 updater.forEach(updater => run(updater, value));
 } // if
-} // run
-} // update
+} // _update
 
 function displayParameter (parameter) {
-console.log(`displaying ${parameter.name}...`);
+//console.log(`displaying ${parameter.name}...`);
 const element = createUiControl(parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";

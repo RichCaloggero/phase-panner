@@ -3,6 +3,7 @@ constructor (audio, scene) {
 super (audio, scene);
 this.context = audio;
 this.scene = scene;
+this.roomSize = 1.0;
 this.source = {};
 const inLeft = this.source.left = scene.createSource();
 const inRight = this.source.right = scene.createSource();
@@ -25,9 +26,11 @@ source.setPosition(position[0],position[1],position[2]);
 
 setRoomSize (value) {
 this.roomSize = value;
+console.log("setRoomSize: ", this.roomSize, value);
 } // setRoomSize
 
-updateRoom (room, scale = 1) {
+updateRoom (room) {
+const scale = this.roomSize;
 const dimensions = Object.assign({}, room.dimensions);
 dimensions.width *= scale;
 dimensions.depth *= scale;

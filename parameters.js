@@ -3,7 +3,7 @@ name: "", list: true,
 type: "range",
 value: 0, min: 0, max: 1, step: 0.1,
 selectedIndex: 0,
-updater: function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
+updater: null, // function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
 automator: {type: "sine", frequency: 0.5},
 }; // defaultParameter
 

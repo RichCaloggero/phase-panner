@@ -22,7 +22,7 @@ label {display: block;}
 
 <div id="parameters">
 <label>Parameter: <select id="parameterList" accesskey="p"></select></label>
-value: <span class="value"></span>
+<span class="value"></span>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
 <label>automation shape: <select id="automationShape"></select></label>
 </div><!-- #parameters -->
@@ -139,11 +139,11 @@ if (parameter.list && parameter.name !== "dimensions" && parameter.name !== "rot
 } // updateAll
 
 function update (element) {
-console.log("update: ", element);
+//console.log("update: ", element);
 const parameterName = element.id || getParameterName();
 if (! parameterName) return;
 const parameter = parameters.get(parameterName);
-console.log("- parameter: ", parameter.name, " is type ", parameter.type);
+//console.log("- parameter: ", parameter.name, " is type ", parameter.type);
 
 let value = element.value.trim();
 if (parameter.type === "range" || parameter.type === "number") {
@@ -151,7 +151,7 @@ value = Number(value);
 } else if (parameter.type === "custom") {
 value = element.getAttribute("data-value");
 } // if	
-console.log(`- ${parameter.name}, ${typeof(value)}, ${value}`);
+//console.log(`- ${parameter.name}, ${typeof(value)}, ${value}`);
 
 // cache values
 parameter.value = value;
@@ -166,11 +166,11 @@ return element;
 
 
 function _update (parameter) {
-//console.log(`_update: ${parameter.name}`);
+console.log(`_update: ${parameter.name}`);
 const updater = parameter.updater;
 if (!updater) return;
 const value = parameter.options? parameter.options[parameter.selectedIndex] : parameter.value;
-//console.log(`- ${typeof(updater)}, ${value}`);
+console.log(`- ${typeof(updater)}, ${value}`);
 
 if (updater instanceof Function) {
 try {updater (value);}
@@ -195,18 +195,22 @@ function displayParameter (parameter) {
 const element = createUiControl(parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";
+if (parameter.type !== "custom") {
+const label = document.createElement("label");
+label.textContent = parameter.label || parameter.name;
+label.appendChild(element);
+container.appendChild(label);
+
+} else {
 container.appendChild(element);
-applyConstraints(container, element, parameter);
-message(`${parameter.name}: ${parameter.value}`);
-} // displayParameter
-
-function applyConstraints (container, element, parameter) {
 container.removeAttribute("role");
-
-if (parameter.type === "custom") {
 if (parameter.role) container.setAttribute("role", parameter.role);
 } // if
-} // applyConstraints
+element.id = parameter.name;
+message(`${parameter.name}: ${element.value}`);
+if (element.firstElementChild instanceof HTMLSelectElement) debugger;
+} // displayParameter
+
 
 function getParameterName () {
 return ui("parameterList").value;

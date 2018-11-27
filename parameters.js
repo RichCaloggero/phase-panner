@@ -25,10 +25,8 @@ if (data.type === "custom" && data.elementName) {
 element = document.createElement(data.elementName);
 element.setAttribute("data-value", data.value);
 element.classList.add(data.class);
-return element;
-} // if
 
-if (data.type === "select" || data.options instanceof Array) {
+} else if (data.type === "select" || data.options instanceof Array) {
 element = document.createElement("select");
 populateSelector(element, data.options);
 element.selectedIndex = data.selectedIndex;
@@ -44,9 +42,6 @@ value: data.value
 }); // assign
 } // if
 
-const label = document.createElement("label");
-label.textContent = data.label || data.name;
-label.appendChild(element);
-return label;
+return element;
 } // createUiControl
 

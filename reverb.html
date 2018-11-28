@@ -13,6 +13,15 @@ label {display: block;}
 <h1>reverb test</h1>
 
 <div id="controls">
+<div>
+<h2>Project</h2>
+<label>Project: <select id="projectList" accesskey="u"></select></label>
+<button id="restore" accesskey="r">Restore</button>
+<button id="save" accesskey="s">Save</button>
+<button id="delete" accesskey="-">Delete</button>
+<label>Name: <input type="text" id="projectName" accesskey="n"></label>
+</div>
+
 <div id="audio">
 <h2>Audio</h2>
 <label>audio: <input type="text" id="media" accesskey="f"></label>
@@ -44,8 +53,8 @@ const player = audio.createMediaElementSource (audioElement);
 const scene = Reverb.createScene();
 const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
-const projectList = [];
-const project = {};
+let projectList = [];
+let projectName = "";
 
 /// connections
 player.connect(reverb.input);
@@ -70,19 +79,18 @@ reverb.source.left.setOrientation(1,0,0, 0,1,0);
 reverb.source.right.setOrientation(-1,0,0, 0,1,0);
 [reverb.source.left, reverb.source.right].forEach(source => source.setRolloff("none"));
 
+restore();
 updateAll();
-update(ui("parameterList")).focus();
+_update(parameters.get("projectList"))
+ui("projectList").focus();
 console.log("initialization complete.");
-
-/*reverb.updateRoom(room);
-reverb.setPosition(
-[-room.dimensions.width/2,0,0],
-[room.dimensions.width/2,0,0]
-); // initial position
-*/
 
 
 /// events
+
+ui("save").addEventListener("click", save);
+ui("restore").addEventListener("click", restore);
+ui("delete").addEventListener("click", e => deleteProject(getProjectName()));
 
 ui("controls").addEventListener("change", e => {
 console.log("change event on ", e.target.id);
@@ -90,7 +98,11 @@ update(e.target)
 });
 
 ui("controls").addEventListener("keydown", (e) => {
-if ((e.key === "0" || e.key === "1") && e.target.type && e.target.type === "range") {
+if (e.key === "Delete" && e.target.id === "projectList") {
+deleteProject(e.target.value);
+setTimeout(() => e.target.focus(), 0);
+
+} else if ((e.key === "0" || e.key === "1") && e.target.type && e.target.type === "range") {
 e.target.value = e.key;
 signal(e.target);
 e.target.focus();
@@ -211,10 +223,99 @@ message(`${parameter.name}: ${element.value}`);
 if (element.firstElementChild instanceof HTMLSelectElement) debugger;
 } // displayParameter
 
+/// projects
+
+function save () {
+projectList = updateProjectList(createProject(), projectList);
+localStorage.setItem("reverb", JSON.stringify(projectList));
+} // save
+
+function restore () {
+try {
+const list = JSON.parse(localStorage.getItem("reverb"));
+projectList = list.slice();
+populateSelector(ui("projectList"), list.map(p => p.name));
+if (findProject(projectName)) {
+loadProject(projectName);
+} else {
+loadProject(list[0].name);
+} // if
+
+} catch (e) {
+message(`restore: error; ${e}`);
+} // try
+} // restore
+
+function createProject () {
+return {
+name: projectName,
+parameters: saveParameters()
+};
+} // createProject
+
+function loadProject (name) {
+const project = projectList[findProject(name)];
+if (project) {
+projectName = project.name;
+parameters = restoreParameters(project.parameters);
+ui("projectList").selectedIndex = findProject(name);
+message (`${project.name} loaded.`);
+
+} else {
+message(`load: project ${name} does not exist`);
+return;
+} // if
+} // loadProject
+
+function findProject (name) {
+return projectList.findIndex(p => compareNames(name, p.name));
+} // findProject
+
+function updateProjectList (project, list) {
+let index;
+if (projectList.length === 0) {
+return [project];
+
+} else if (index = findProject(project.name) === -1) {
+return projectList.slice().concat(project);
+
+} else {
+return Array.concat(
+list.slice(0, index+1),
+list.slice(index+1, list.length - index)
+); // concat
+} // if
+} // updateProjectList
+
+/// utilities
+
+function compareNames (name1, name2) {
+return removeSpaces(name1) === removeSpaces(name2);
+} // compareNames
+
+function removeSpaces (s) {
+s.replace(/\s/g, "");
+} // removeSpaces
+
+function getProjectName () {
+return ui("projectList").value;
+} // getProjectName
 
 function getParameterName () {
 return ui("parameterList").value;
 } // getParameterName
+
+function saveParameters () {
+return Array.from(parameters.entries());
+} // saveParameters
+
+function restoreParameters (entries) {
+entries.forEach(entry => {
+const old = parameters.get(entry[0]);
+const newData = entry[1];
+Object.assign(old, newData);
+});
+} // restoreParameters
 
 
 function modify(vector, index, n) {

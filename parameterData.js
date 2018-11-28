@@ -164,4 +164,15 @@ options: ["lowpass", "highpass", "bandpass",
 "lowshelf", "highshelf",
 "peaking", "notch",
 "allpass"]
+}, {
+name: "projectName", type: "text", list: false,
+updater: function (value) {
+projectName = value;
+}
+}, {
+name: "projectList", type: "select", list: false, selectedIndex: 0,
+options: ["untitled"],
+updater: function (value) {
+loadProject(value);
+}
 }]; // parameterData

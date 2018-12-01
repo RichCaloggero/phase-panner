@@ -21,6 +21,7 @@ return parameters;
 
 function createUiControl (data) {
 let element;
+
 if (data.type === "custom" && data.elementName) {
 element = document.createElement(data.elementName);
 element.setAttribute("data-value", data.value);

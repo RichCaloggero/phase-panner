@@ -42,7 +42,9 @@ label {display: block;}
 <script src="resonance-audio.min.js"></script>
 <script src="ui.js"></script>
 <script src="component.js"></script>
-<script src="reverb.js"></script>
+<script  src="reverb.js">
+window.Reverb = Reverb;
+</script>
 <script src="parameters.js"></script>
 <script src="parameterData.js"></script>
 <script>
@@ -50,7 +52,7 @@ const messageDisplayTime = 20; // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
 const player = audio.createMediaElementSource (audioElement);
-const scene = Reverb.createScene();
+const scene = createScene();
 const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
 let projectList = [];
@@ -91,9 +93,16 @@ console.log("initialization complete.");
 ui("save").addEventListener("click", save);
 ui("restore").addEventListener("click", restore);
 ui("delete").addEventListener("click", e => deleteProject(getProjectName()));
+ui("controls").addEventListener("click", e => {
+if (e.target.matches("button.vector")) {
+message (e.target.getAttribute("data-value"));
+} // if
+});
+
+
 
 ui("controls").addEventListener("change", e => {
-console.log("change event on ", e.target.id);
+//console.log("change event on ", e.target.id);
 update(e.target)
 });
 
@@ -178,11 +187,11 @@ return element;
 
 
 function _update (parameter) {
-console.log(`_update: ${parameter.name}`);
+//console.log(`_update: ${parameter.name}`);
 const updater = parameter.updater;
 if (!updater) return;
 const value = parameter.options? parameter.options[parameter.selectedIndex] : parameter.value;
-console.log(`- ${typeof(updater)}, ${value}`);
+//console.log(`- ${typeof(updater)}, ${value}`);
 
 if (updater instanceof Function) {
 try {updater (value);}
@@ -344,6 +353,12 @@ setTimeout(() => container.textContent = "", 1000 * messageDisplayTime);
 return text;
 } // _message
 } // message
+
+function createScene (order = 3) {
+const scene = new ResonanceAudio(audio);
+scene.setAmbisonicOrder(order);
+return scene;
+} // createScene
 
 </script>
 

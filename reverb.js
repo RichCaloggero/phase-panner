@@ -90,12 +90,6 @@ up: "transparent"  // 'transparent'
 return {dimensions: defaultDimensions, materials: defaultMaterials};
 } // defaultRoom
 
-static createScene (order = 3) {
-const scene = new ResonanceAudio(audio);
-scene.setAmbisonicOrder(order);
-return scene;
-} // createScene
-
 static displayDimensions(dimensions) {
 return `${dimensions.width.toFixed(2)}X${dimensions.depth.toFixed(2)}X${dimensions.height.toFixed(2)}`;
 } // displayDimensions

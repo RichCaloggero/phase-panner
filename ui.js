@@ -49,7 +49,7 @@ if (eventName) signal(element, eventName);
 
 
 function signal (element, eventName = "change") {
-console.log("signal: ", element, eventName);
+//console.log("signal: ", element, eventName);
 element.dispatchEvent(new CustomEvent(eventName, {bubbles: true}));
 return element;
 } // signal

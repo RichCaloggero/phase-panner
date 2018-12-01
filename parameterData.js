@@ -1,19 +1,14 @@
 const parameterData = [{
-name: "mix",
-updater: function (value) {
-reverb.mix(value);
-}
-}, {
 name: "media", type: "text", list: false,
 updater: function (value) {
 audioElement.src = value;
 audioElement.play();
 },
 }, {
-name: "parameterList", list: false, type: "select", selectedIndex: 0,
+name: "mix",
 updater: function (value) {
-displayParameter(parameters.get(value));
-},
+reverb.mix(value);
+}
 }, {
 name: "width",
 value: 3, max: 100,
@@ -83,6 +78,16 @@ room.materials.back = value;
 reverb.updateRoom(room);
 }
 }, {
+name: "roomSize",
+value: 1.0, max: 100,
+updater: function (value) {
+reverb.setRoomSize(value);
+const dimensions = reverb.updateRoom(room).dimensions;
+setTimeout(() => {
+message(`Dimensions: ${Reverb.displayDimensions(dimensions)}`);
+}, 200);
+},
+}, {
 name: "dimensions", type: "text",
 value: '{"width": 1.3, "depth": 2.0, "height": 0.7}',
 updater (value) {
@@ -98,27 +103,22 @@ message(`cannot parse dimensions: ${e}\n${e.stack}`);
 } // try
 },
 }, {
-name: "roomSize",
-value: 1.0, max: 100,
-updater: function (value) {
-reverb.setRoomSize(value);
-const dimensions = reverb.updateRoom(room).dimensions;
-setTimeout(() => {
-message(`Dimensions: ${Reverb.displayDimensions(dimensions)}`);
-}, 200);
-},
-}, {
 name: "leftPosition", type: "custom", elementName: "button", role: "application", class: "vector",
-value: "[-2,0,0]",
+value: "[-2,0,0]", step: 1, min: 0, max: 360,
+
 updater: function (value) {
 value = JSON.parse(value);
+console.log(`leftPosition: ${value}`);
 reverb.source.left.setPosition(value[0], value[1], value[2]);
 },
 }, {
 name: "rightPosition", type: "custom", elementName: "button", role: "application", class: "vector",
-value: "[2,0,0]",
+value: "[2,0,0]", min: 0, max: 360, step: 1,
+
 updater: function (value) {
 value = JSON.parse(value);
+reverb.source.right.setPosition(value[0], value[1], value[2]);
+console.log(`rightPosition: ${value}`);
 reverb.source.right.setPosition(value[0], value[1], value[2]);
 },
 }, {
@@ -175,4 +175,9 @@ options: ["untitled"],
 updater: function (value) {
 loadProject(value);
 }
+}, {
+name: "parameterList", list: false, type: "select", selectedIndex: 0,
+updater: function (value) {
+displayParameter(parameters.get(value));
+},
 }]; // parameterData

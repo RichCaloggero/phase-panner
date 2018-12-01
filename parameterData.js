@@ -7,6 +7,7 @@ audioElement.play();
 }, {
 name: "mix",
 updater: function (value) {
+console.log("mix: ", value);
 reverb.mix(value);
 }
 }, {
@@ -91,10 +92,10 @@ message(`Dimensions: ${Reverb.displayDimensions(dimensions)}`);
 name: "dimensions", type: "text",
 value: '{"width": 1.3, "depth": 2.0, "height": 0.7}',
 updater (value) {
-console.log(`dimensions.updater: ${value.length}, ${value}`);
+//console.log(`dimensions.updater: ${value.length}, ${value}`);
 try {
 const dimensions = JSON.parse(value);
-room.dimensions = Object.assign({}, dimensions);
+room.dimensions = Object.assign({}, room.dimensions, dimensions);
 reverb.updateRoom(room);
 
 message(`new dimensions: ${Reverb.displayDimensions(dimensions)}`);
@@ -146,24 +147,34 @@ updater: function (value) {
 [reverb.source.left, reverb.source.right].forEach(source => source.setSourceWidth(value));
 },
 }, {
-name: "xtcMix",
+name: "xtcMix", value: 0,
+updater: function (value) {
+console.log("xtcMix: ", value);
+xtc.mix(value);
+}
 }, {
-name: "frequency",
-value: 500, min: 20, max: 10000, step: 20
+name: "xtcFrequency",
+value: 6000, min: 20, max: 10000, step: 20,
+updater: function (value) {xtc.filter.frequency.value = value;}
 }, {
-name: "q",
-value: 1, max: 10
+name: "xtcQ",
+value: 0.3, max: 10,
+updater: function (value) {xtc.filter.Q.value = value;}
 }, {
-name: "feedback",
-min: -1,
+name: "xtcFeedback",
+value: 0.0, min: -1,
+updater: function (value) {xtc.feedback.gain.value = value;}
 }, {
-name: "delay"
+name: "xtcDelay",
+value: 0.0, step: (1/48000)/2,
+updater: function (value) {xtc.leftDelay.delayTime.value = xtc.rightDelay.delayTime.value = value;}
 }, {
-name: "filterType", type: "select",
+name: "xtcFilterType", type: "select", value: "bandpass",
 options: ["lowpass", "highpass", "bandpass",
 "lowshelf", "highshelf",
 "peaking", "notch",
-"allpass"]
+"allpass"],
+updater: function (value) {xtc.filter.type = value;}
 }, {
 name: "projectName", type: "text", list: false,
 updater: function (value) {

@@ -160,6 +160,6 @@ this.input.connect(this.filter).connect(s);
 s.connect(left, 0).connect(this.leftDelay).connect(m, 0,1);
 s.connect(right, 1).connect(this.rightDelay).connect(m, 0,0);
 m.connect(this.wet);
-this.wet.connect(this.feedback).connect(this.input);
+this.wet.connect(this.feedback).connect(s);
 } // constructor
 } // class Xtc

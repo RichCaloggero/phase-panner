@@ -55,12 +55,14 @@ const player = audio.createMediaElementSource (audioElement);
 const scene = createScene();
 const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
+const xtc = new Xtc(audio);
 let projectList = [];
 let projectName = "";
 
 /// connections
 player.connect(reverb.input);
-reverb.output.connect(audio.destination);
+reverb.output.connect(xtc.input);
+xtc.output.connect(audio.destination);
 
 
 /// initialize
@@ -160,8 +162,8 @@ if (parameter.list && parameter.name !== "dimensions" && parameter.name !== "rot
 } // updateAll
 
 function update (element) {
-//console.log("update: ", element);
-const parameterName = element.id || getParameterName();
+console.log("update: ", element);
+const parameterName = element.id === "value"? getParameterName() : element.id;
 if (! parameterName) return;
 const parameter = parameters.get(parameterName);
 //console.log("- parameter: ", parameter.name, " is type ", parameter.type);
@@ -172,13 +174,14 @@ value = Number(value);
 } else if (parameter.type === "custom") {
 value = element.getAttribute("data-value");
 } // if	
-//console.log(`- ${parameter.name}, ${typeof(value)}, ${value}`);
+console.log(`- ${parameter.name}, updates via ${typeof(parameter.updater)} with ${typeof(value)}, ${value}`);
 
 // cache values
 parameter.value = value;
 parameter.selectedIndex = element.selectedIndex;
 
 if (parameter && parameter.updater) {
+console.log ("- calling _update...");
 _update(parameter);
 } // if
 
@@ -187,11 +190,11 @@ return element;
 
 
 function _update (parameter) {
-//console.log(`_update: ${parameter.name}`);
+console.log(`_update: ${parameter.name}`);
 const updater = parameter.updater;
 if (!updater) return;
 const value = parameter.options? parameter.options[parameter.selectedIndex] : parameter.value;
-//console.log(`- ${typeof(updater)}, ${value}`);
+console.log(`_update: ${typeof(updater)}, ${value}`);
 
 if (updater instanceof Function) {
 try {updater (value);}
@@ -212,24 +215,22 @@ updater.forEach(updater => run(updater, value));
 } // _update
 
 function displayParameter (parameter) {
-//console.log(`displaying ${parameter.name}...`);
+console.log(`displaying ${parameter.name}...`);
 const element = createUiControl(parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";
-if (parameter.type !== "custom") {
+if (parameter.type === "custom") {
+container.appendChild(element);
+container.removeAttribute("role");
+if (parameter.role) container.setAttribute("role", parameter.role);
+
+} else {
 const label = document.createElement("label");
 label.textContent = parameter.label || parameter.name;
 label.appendChild(element);
 container.appendChild(label);
-
-} else {
-container.appendChild(element);
-container.removeAttribute("role");
-if (parameter.role) container.setAttribute("role", parameter.role);
 } // if
-element.id = parameter.name;
 message(`${parameter.name}: ${element.value}`);
-if (element.firstElementChild instanceof HTMLSelectElement) debugger;
 } // displayParameter
 
 /// projects

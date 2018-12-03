@@ -113,6 +113,18 @@ message(`cannot parse dimensions: ${e}\n${e.stack}`);
 } // try
 },
 }, {
+name: "angle", 
+value: 0, min: 0, max: 360, step: 1,
+updater: function (value) {
+setPosition(value, parameters.get("radius").value);
+}
+}, {
+name: "radius", 
+value: 0.05, min: -100, max: 100, step: 0.1,
+updater: function (value) {
+setPosition(parameters.get("angle").value, value);
+}
+}, {
 name: "leftPosition", type: "custom", elementName: "button", role: "application", class: "vector",
 value: "[-2,0,0]", step: 1, min: 0, max: 360,
 
@@ -184,13 +196,17 @@ options: ["lowpass", "highpass", "bandpass",
 "allpass"],
 updater: function (value) {xtc.filter.type = value;}
 }, {
+name: "volume", value: 1, list: false,
+updater: function (value) {
+output.gain.value = value;
+}
+}, {
 name: "projectName", type: "text", list: false,
 updater: function (value) {
 projectName = value;
 }
 }, {
 name: "projectList", type: "select", list: false, selectedIndex: 0,
-options: ["untitled"],
 updater: function (value) {
 loadProject(value);
 }

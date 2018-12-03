@@ -32,14 +32,18 @@ label {display: block;}
 
 <label>Parameter: <select id="parameterList" accesskey="p"></select></label>
 <span class="value"></span>
+<label>enable automation: <input id="enableAutomation" type="checkbox" accesskey="e"></label>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
 <label>automation shape: <select id="automationShape"></select></label>
 </div><!-- #parameters -->
+
+<div id="output">
+<label>Volume: <input id="volume" type="range" min="0" max="1" step="0.1" accesskey="v"></label>
+</div><!-- #output -->
 </div><!-- #controls -->
 
 <div id="message" aria-live="polite"></div>
 
-<script src="watch.js"></script>
 <script src="resonance-audio.min.js"></script>
 <script src="ui.js"></script>
 <script src="component.js"></script>
@@ -62,7 +66,7 @@ const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
 const xtc = new Xtc(audio);
 let projectList = [];
-let projectName = "";
+let projectName = "Untitled Project";
 
 /// connections
 player.connect(input);
@@ -92,7 +96,7 @@ reverb.source.right.setOrientation(-1,0,0, 0,1,0);
 
 restore();
 updateAll();
-_update(parameters.get("projectList"))
+_update(parameters.get("projectList"));
 ui("projectList").focus();
 console.log("initialization complete.");
 
@@ -205,9 +209,12 @@ const value = parameter.options? parameter.options[parameter.selectedIndex] : pa
 
 if (updater instanceof Function) {
 try {updater (value);}
-catch (e) {message(`OOPS: ${e}\n${e.stack}`);}
+catch (e) {message(
+`OOPS: ${e}
+${e.stack}
+`);} // catch
 
-} else if (typeof(updater) === "object" && !(updater instanceof Array)) {
+/*} else if (typeof(updater) === "object" && !(updater instanceof Array)) {
 
 // special cases
 // if updater has a key of "value", then assign value to that key
@@ -218,6 +225,7 @@ else throw new Error(`cannot update: ${parameter.name} to ${value} with ${update
 
 } else if (updater instanceof Array) {
 updater.forEach(updater => run(updater, value));
+*/
 } // if
 } // _update
 
@@ -226,9 +234,10 @@ function displayParameter (parameter) {
 const element = createUiControl(parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";
+container.removeAttribute("role");
+
 if (parameter.type === "custom") {
 container.appendChild(element);
-container.removeAttribute("role");
 if (parameter.role) container.setAttribute("role", parameter.role);
 
 } else {
@@ -237,7 +246,9 @@ label.textContent = parameter.label || parameter.name;
 label.appendChild(element);
 container.appendChild(label);
 } // if
+//setTimeout(() => {
 message(`${parameter.name}: ${element.value}`);
+//}, 50);
 } // displayParameter
 
 /// projects
@@ -245,32 +256,42 @@ message(`${parameter.name}: ${element.value}`);
 function save () {
 projectList = updateProjectList(createProject(), projectList);
 localStorage.setItem("reverb", JSON.stringify(projectList));
+message(`Saved ${projectList.length} projects.`);
 } // save
 
 function restore () {
 try {
 const list = JSON.parse(localStorage.getItem("reverb"));
-projectList = list.slice();
+projectList = list;
+console.log(`restoring ${list.length} items...`);
 populateSelector(ui("projectList"), list.map(p => p.name));
+console.log("- project selector initialized");
 if (findProject(projectName)) {
 loadProject(projectName);
-} else {
+} else if (projectList.length > 0) {
 loadProject(list[0].name);
 } // if
 
 } catch (e) {
 message(`restore: error; ${e}`);
 } // try
+
+message(`${projectList.length} projects restored.`);
 } // restore
 
 function createProject () {
 return {
-name: projectName,
+name: projectName || "Untitled Project"		,
 parameters: saveParameters()
 };
 } // createProject
 
 function loadProject (name) {
+if (! name) {
+message("loadProject: need a name");
+throw new Error("loadProject: need a name");
+} // if
+
 const project = projectList[findProject(name)];
 if (project) {
 projectName = project.name;
@@ -304,7 +325,34 @@ list.slice(index+1, list.length - index)
 } // if
 } // updateProjectList
 
+function setPosition (a, r) {
+const pi = Math.PI;
+const cos = Math.cos;
+const sin = Math.sin;
+a = (pi / 180) * a;
+
+reverb.source.left.setPosition(
+-1 * r * cos(a),
+r * sin(a),
+r * sin(a) * cos(a)
+);
+
+reverb.source.right.setPosition(
+r * cos(a),
+r * sin(a),
+-1 * r * sin(a) * cos(a)
+);
+} // setPosition
+
 /// utilities
+
+
+function LFO (frequency, shape) {
+const oscillator = audio.createOscillator();
+oscillator.frequency.value = frequency;
+oscillator.shape.value = shape;
+return oscillator;
+} // LFO
 
 function compareNames (name1, name2) {
 return removeSpaces(name1) === removeSpaces(name2);

@@ -17,13 +17,6 @@ const parameters = new Map();
 parameterData.forEach(data => {
 const p = Object.assign({}, defaultParameter, data);
 parameters.set(p.name, p);
-
-/*if (p.name === "xtcMix")
-p.watch("updater",
-function (oldValue, newValue) {
-throw new Error(`xtcMix updater changed from${oldValue} to ${newValue}`);
-}); // watch
-*/
 }); // forEach
 
 return parameters;

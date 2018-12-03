@@ -1,13 +1,14 @@
 function populateSelector(id, items) {
 const element = (id instanceof HTMLElement)? id : ui(id);
 if (element) {
+console.log(`populateSelector: ${element.id}, #${items.length}, [${items}]`);
 element.innerHTML = "";
 items.forEach(item => {
 let key, value;
 if (item instanceof Array) {
 key = item[0];
 value = item[1];
-} else if (typeof(item) === "string" || typeof(item) === "number") {
+} else if (typeof(item) === "boolean" || typeof(item) === "string" || typeof(item) === "number") {
 key = value = item;
 } // if
 

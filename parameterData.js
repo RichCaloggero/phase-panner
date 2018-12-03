@@ -7,8 +7,17 @@ audioElement.play();
 }, {
 name: "mix",
 updater: function (value) {
-console.log("mix: ", value);
 reverb.mix(value);
+}
+}, {
+name: "enableLeft", type: "checkbox", value: true,
+updater: function (value) {
+reverb.enableSource("left", value);
+}
+}, {
+name: "enableRight", type: "checkbox", value: true,
+updater: function (value) {
+reverb.enableSource("right", value);
 }
 }, {
 name: "width",
@@ -109,7 +118,7 @@ value: "[-2,0,0]", step: 1, min: 0, max: 360,
 
 updater: function (value) {
 value = JSON.parse(value);
-console.log(`leftPosition: ${value}`);
+//console.log(`leftPosition: ${value}`);
 reverb.source.left.setPosition(value[0], value[1], value[2]);
 },
 }, {
@@ -119,7 +128,7 @@ value: "[2,0,0]", min: 0, max: 360, step: 1,
 updater: function (value) {
 value = JSON.parse(value);
 reverb.source.right.setPosition(value[0], value[1], value[2]);
-console.log(`rightPosition: ${value}`);
+//console.log(`rightPosition: ${value}`);
 reverb.source.right.setPosition(value[0], value[1], value[2]);
 },
 }, {
@@ -145,11 +154,10 @@ name: "sourceWidth",
 min: 0, max: 360, step: 1,
 updater: function (value) {
 [reverb.source.left, reverb.source.right].forEach(source => source.setSourceWidth(value));
-},
+}
 }, {
 name: "xtcMix", value: 0,
 updater: function (value) {
-console.log("xtcMix: ", value);
 xtc.mix(value);
 }
 }, {

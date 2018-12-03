@@ -22,6 +22,7 @@ label {display: block;}
 <label>Name: <input type="text" id="projectName" accesskey="n"></label>
 </div>
 
+<div id="parameters">
 <div id="audio">
 <h2>Audio</h2>
 <label>audio: <input type="text" id="media" accesskey="f"></label>
@@ -29,7 +30,6 @@ label {display: block;}
 <audio tabindex="0"  accesskey="a" controls></audio>
 </div>
 
-<div id="parameters">
 <label>Parameter: <select id="parameterList" accesskey="p"></select></label>
 <span class="value"></span>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
@@ -39,6 +39,7 @@ label {display: block;}
 
 <div id="message" aria-live="polite"></div>
 
+<script src="watch.js"></script>
 <script src="resonance-audio.min.js"></script>
 <script src="ui.js"></script>
 <script src="component.js"></script>
@@ -48,9 +49,13 @@ window.Reverb = Reverb;
 <script src="parameters.js"></script>
 <script src="parameterData.js"></script>
 <script>
+"use strict";
+
 const messageDisplayTime = 20; // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
+const input = audio.createGain();
+const output = audio.createGain();
 const player = audio.createMediaElementSource (audioElement);
 const scene = createScene();
 const reverb = new Reverb(audio, scene);
@@ -60,9 +65,10 @@ let projectList = [];
 let projectName = "";
 
 /// connections
-player.connect(reverb.input);
+player.connect(input);
+input.connect(reverb.input);
 reverb.output.connect(xtc.input);
-xtc.output.connect(audio.destination);
+xtc.output.connect(output).connect(audio.destination);
 
 
 /// initialize
@@ -71,7 +77,8 @@ const parameters = createParameterMap(parameterData);
 //console.log(`created ${parameters.size} parameters`);
 populateSelector (
 ui("parameterList"),
-Array.from(parameters.keys()).filter(key => {
+Array.from(parameters.keys())
+.filter(key => {
 const parameter = parameters.get(key);
 return (parameter.list && parameter.updater);
 }) // filter
@@ -162,26 +169,27 @@ if (parameter.list && parameter.name !== "dimensions" && parameter.name !== "rot
 } // updateAll
 
 function update (element) {
-console.log("update: ", element);
+console.log(`update: ${element.id}, ${element.type}, ${element.value}, ${element.checked}`);
 const parameterName = element.id === "value"? getParameterName() : element.id;
 if (! parameterName) return;
 const parameter = parameters.get(parameterName);
-//console.log("- parameter: ", parameter.name, " is type ", parameter.type);
+console.log("- parameter: ", parameter.name, " is type ", parameter.type);
 
 let value = element.value.trim();
 if (parameter.type === "range" || parameter.type === "number") {
 value = Number(value);
+} else if (parameter.type === "checkbox") {
+value = element.checked;
 } else if (parameter.type === "custom") {
 value = element.getAttribute("data-value");
 } // if	
-console.log(`- ${parameter.name}, updates via ${typeof(parameter.updater)} with ${typeof(value)}, ${value}`);
+//console.log(`- ${parameter.name}, updates via ${typeof(parameter.updater)} with ${typeof(value)}, ${value}`);
 
 // cache values
 parameter.value = value;
 parameter.selectedIndex = element.selectedIndex;
 
 if (parameter && parameter.updater) {
-console.log ("- calling _update...");
 _update(parameter);
 } // if
 
@@ -190,11 +198,10 @@ return element;
 
 
 function _update (parameter) {
-console.log(`_update: ${parameter.name}`);
+//console.log(`_update: ${parameter.name}`);
 const updater = parameter.updater;
 if (!updater) return;
 const value = parameter.options? parameter.options[parameter.selectedIndex] : parameter.value;
-console.log(`_update: ${typeof(updater)}, ${value}`);
 
 if (updater instanceof Function) {
 try {updater (value);}
@@ -215,7 +222,7 @@ updater.forEach(updater => run(updater, value));
 } // _update
 
 function displayParameter (parameter) {
-console.log(`displaying ${parameter.name}...`);
+//console.log(`displaying ${parameter.name}...`);
 const element = createUiControl(parameter);
 const container = document.querySelector("#parameters .value");
 container.innerHTML = "";
@@ -360,6 +367,7 @@ const scene = new ResonanceAudio(audio);
 scene.setAmbisonicOrder(order);
 return scene;
 } // createScene
+
 
 </script>
 

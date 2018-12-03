@@ -10,11 +10,25 @@ const inRight = this.source.right = scene.createSource();
 inLeft.setDirectivityPattern(0, 100);
 inRight.setDirectivityPattern(0, 100);
 const s = audio.createChannelSplitter();
+
 this.input.connect(s);
 s.connect(inLeft.input, 0,0);
 s.connect(inRight.input, 1,0);
 scene.output.connect(this.wet);
 } // constructor
+
+enableSource(name, value) {
+if (this.source[name]) {
+const source = this.source[name];
+if (value) {
+source.input.gain.value = 1;
+} else {
+source.input.gain.value = 0;
+} // if
+} // if
+} // enableSource
+
+
 
 setPosition (...positions) {
 [this.source.left,this.source.right].forEach((source, index) => _set(source, positions[index]));

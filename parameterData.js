@@ -203,6 +203,7 @@ output.gain.value = value;
 }, {
 name: "projectName", type: "text", list: false,
 updater: function (value) {
+console.log("projectName: ", value);
 projectName = value;
 }
 }, {

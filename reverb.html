@@ -65,7 +65,7 @@ const scene = createScene();
 const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
 const xtc = new Xtc(audio);
-let projectList = [];
+const projectList = [];
 let projectName = "Untitled Project";
 
 /// connections
@@ -254,7 +254,8 @@ message(`${parameter.name}: ${element.value}`);
 /// projects
 
 function save () {
-projectList = updateProjectList(createProject(), projectList);
+updateProjectList(createProject());
+console.log("save: first project name is ", projectList[0].name);
 localStorage.setItem("reverb", JSON.stringify(projectList));
 message(`Saved ${projectList.length} projects.`);
 } // save
@@ -309,19 +310,12 @@ function findProject (name) {
 return projectList.findIndex(p => compareNames(name, p.name));
 } // findProject
 
-function updateProjectList (project, list) {
-let index;
-if (projectList.length === 0) {
-return [project];
-
-} else if (index = findProject(project.name) === -1) {
-return projectList.slice().concat(project);
-
+function updateProjectList (project) {
+let index = projectList.findIndex(p => p.name === project.name);
+if (index >= 0) {
+projectList[index] = project;
 } else {
-return Array.concat(
-list.slice(0, index+1),
-list.slice(index+1, list.length - index)
-); // concat
+projectList.push(project);
 } // if
 } // updateProjectList
 

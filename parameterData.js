@@ -201,12 +201,14 @@ updater: function (value) {
 output.gain.value = value;
 }
 }, {
-name: "automationFunction", type: "text", list: false,
+name: "functionText", type: "text", list: false,
 updater: function (value) {
 const parameter = parameters.get(getParameterName());
 if (parameter && value) {
+console.log(`- setting functionText for ${parameter.name} to ${value}`);
 parameter.automation.functionText = value;
 parameter.automation.function = compile(value);
+console.log(`- compiled: ${parameter.automation.function}`);
 return parameter;
 } // if
 
@@ -216,7 +218,15 @@ name: "enableAutomation", type: "checkbox", list: false,
 updater: function (value) {
 const parameter = parameters.get(getParameterName());
 if (parameter) {
+console.log(`enableAutomation: ${parameter.name} = ${value}`);
 parameter.automation.enabled = value;
+
+if (value) {
+parameter.automation.functionText = ui("functionText").value.trim();
+console.log (`- compiling ${parameter.automation.functionText}...`);
+parameter.automation.function = compile(parameter.automation.functionText);
+} // if
+
 return parameter;
 } // if
 }

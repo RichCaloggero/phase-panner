@@ -32,7 +32,7 @@ label {display: block;}
 
 <label>Parameter: <select id="parameterList" accesskey="p"></select></label>
 <span class="value"></span>
-<label>automation function: <input id="automationFunction" type="text" value="sin(t)"></label>
+<label>automation function: <input id="functionText" type="text" value="sin(t)"></label>
 <label>enable automation: <input id="enableAutomation" type="checkbox" accesskey="e"></label>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
 <label>automation shape: <select id="automationShape"></select></label>
@@ -57,7 +57,7 @@ window.Reverb = Reverb;
 <script>
 "use strict";
 
-const messageDisplayTime = 20; // seconds
+const messageDisplayTime = 0; // seconds
 const audio = new AudioContext();
 const audioElement = document.querySelector("audio");
 const input = audio.createGain();
@@ -121,7 +121,7 @@ message (e.target.getAttribute("data-value"));
 
 
 ui("controls").addEventListener("change", e => {
-//console.log("change event on ", e.target.id);
+console.log("change event on ", e.target.id);
 update(e.target)
 });
 
@@ -350,7 +350,9 @@ r * sin(a),
 function runAutomation (automator, tick = 0.1) {
 if (automationEnabled) {
 parameters.forEach(parameter => {
-if (parameter.automation.enabled && parameter.automation.function) automator(audio.currentTime, parameter);
+if (parameter.automation.enabled && parameter.automation.function) {
+automator(audio.currentTime, parameter);
+} // if
 }); // forEach
 
 //processGroups(automation.groups);
@@ -368,7 +370,10 @@ if (!parameter || !parameter.automation.enabled) return;
 try {
 if (!parameter.automation.function) throw new Error(`No function to run for parameter ${parameter.name}`);
 
+with Math {
 parameter.value = parameter.automation.function(t);
+} // with
+
 _update(parameter);
 
 //if (parameter.group) updateGroup(parameter, parameter.function(t));
@@ -377,12 +382,9 @@ _update(parameter);
 parameter.tickCount += 1;
 
 } catch (e) {
-message(`Automator: failed to automate ${parameter.name}; ${e}`);
-
-if (parameter.automation.tickCount > 0) {
+message(`Automator: failed to automate ${parameter.name}; ${e}\n${e.stack}`);
+parameter.automation.enabled = false;
 console.log ("stopping automation of ", parameter.name, " at tick ", parameter.automation.tickCount);
-parameter.automation.tickCount = 0;
-} // if tickCount
 } // catch
 } // automator
 
@@ -465,11 +467,23 @@ const f = _compile(text, "t");
 f(0); // to be sure it was compiled correctly
 return f;
 } catch (e) {
-message (`invalid function: ${text}\n${e}`);
+message (`invalid function: ${text}\n${e}\n${e.stack}`);
 return undefined;
 } // catch
 
 function _compile (body, parameters = "x") {
+console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
+
+if (! body) return null;
+if (! body.includes("return")) body = `return (${body})`;
+
+return new Function (parameters, body); // new Function
+} // _compile
+
+
+/*function _compile (body, parameters = "x") {
+console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
+
 if (! body) return null;
 if (! body.includes("return")) body = `return (${body})`;
 
@@ -480,6 +494,7 @@ ${body};
 }`
 ); // new Function
 } // _compile
+*/
 } // compile
 
 </script>

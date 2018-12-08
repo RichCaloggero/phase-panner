@@ -11,7 +11,8 @@ automation: {
 enabled: false,
 function: null,
 functionText: "",
-parameters: {type: "sine", frequency: 0.5}
+shape: "sine",
+frequency: 0.5
 }, // automation
 }; // defaultParameter
 

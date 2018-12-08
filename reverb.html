@@ -32,9 +32,11 @@ label {display: block;}
 
 <label>Parameter: <select id="parameterList" accesskey="p"></select></label>
 <span class="value"></span>
+<label>automation function: <input id="automationFunction" type="text" value="sin(t)"></label>
 <label>enable automation: <input id="enableAutomation" type="checkbox" accesskey="e"></label>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
 <label>automation shape: <select id="automationShape"></select></label>
+<label>run automation: <input id="runAutomation" type="checkbox" checked accesskey="r"></label>
 </div><!-- #parameters -->
 
 <div id="output">
@@ -68,6 +70,7 @@ const xtc = new Xtc(audio);
 const projectList = [];
 let projectName = "Untitled Project";
 let tickCount = 0;
+let automationEnabled = true;
 
 /// connections
 player.connect(input);
@@ -99,6 +102,8 @@ restore();
 updateAll();
 _update(parameters.get("projectList"));
 ui("projectList").focus();
+if (automationEnabled) runAutomation(automator);
+
 console.log("initialization complete.");
 
 
@@ -175,7 +180,8 @@ if (parameter.list && parameter.name !== "dimensions" && parameter.name !== "rot
 
 function update (element) {
 console.log(`update: ${element.id}, ${element.type}, ${element.value}, ${element.checked}`);
-const parameterName = element.id === "value"? getParameterName() : element.id;
+const parameterName = (element.id === "value")?
+getParameterName() : element.id;
 if (! parameterName) return;
 const parameter = parameters.get(parameterName);
 console.log("- parameter: ", parameter.name, " is type ", parameter.type);
@@ -341,12 +347,16 @@ r * sin(a),
 
 /// automation
 
-function runAutomation (enabled, automator, tick) {
-if (enabled) {
-parameters.forEach(parameter => automator(audio.currentTime, parameter));
+function runAutomation (automator, tick = 0.1) {
+if (automationEnabled) {
+parameters.forEach(parameter => {
+if (parameter.automation.enabled && parameter.automation.function) automator(audio.currentTime, parameter);
+}); // forEach
+
 //processGroups(automation.groups);
 tickCount += 1;
-setTimeout(() => runAutomation(enabled, automator, tick), 1000 * tick);
+
+if (automationEnabled) setTimeout(() => runAutomation(automator, tick), 1000 * tick);
 
 } else {
 console.log("automation stopped at tick  ", tickCount);
@@ -356,7 +366,7 @@ console.log("automation stopped at tick  ", tickCount);
 function automator (t, parameter) {
 if (!parameter || !parameter.automation.enabled) return;
 try {
-if (!parameter.function) throw new Error(`No function to run for parameter ${parameter.name}`);
+if (!parameter.automation.function) throw new Error(`No function to run for parameter ${parameter.name}`);
 
 parameter.value = parameter.automation.function(t);
 _update(parameter);
@@ -365,7 +375,6 @@ _update(parameter);
 //else update(parameter.name, parameter.function(t));
 
 parameter.tickCount += 1;
-
 
 } catch (e) {
 message(`Automator: failed to automate ${parameter.name}; ${e}`);
@@ -439,7 +448,7 @@ _message(args.join(", "));
 function _message (text) {
 const container = document.querySelector("#message");
 container.textContent = text;
-setTimeout(() => container.textContent = "", 1000 * messageDisplayTime);
+if (messageDisplayTime > 0) setTimeout(() => container.textContent = "", 1000 * messageDisplayTime);
 return text;
 } // _message
 } // message
@@ -452,7 +461,7 @@ return scene;
 
 function compile(text) {
 try {
-f = _compile(text, "t");
+const f = _compile(text, "t");
 f(0); // to be sure it was compiled correctly
 return f;
 } catch (e) {
@@ -461,10 +470,15 @@ return undefined;
 } // catch
 
 function _compile (body, parameters = "x") {
+if (! body) return null;
 if (! body.includes("return")) body = `return (${body})`;
 
-return new Function (parameters,
-`with (Math) {${body};}`);
+return new Function (
+parameters,
+`with (Math) {
+${body};
+}`
+); // new Function
 } // _compile
 } // compile
 

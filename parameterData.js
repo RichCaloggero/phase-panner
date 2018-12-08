@@ -221,6 +221,12 @@ return parameter;
 } // if
 }
 }, {
+name: "runAutomation", type: "checkbox", list: false,
+updater: function (value) {
+automationEnabled = value;
+if (automationEnabled) runAutomation(automator);
+}
+}, {
 
 
 name: "projectName", type: "text", list: false,

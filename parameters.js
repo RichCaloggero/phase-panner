@@ -5,11 +5,15 @@ name: "", list: true,
 type: "range",
 value: 0, min: 0, max: 1, step: 0.1,
 selectedIndex: 0,
-updater: "frog", // function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
-automator: {type: "sine", frequency: 0.5},
+updater: null, // function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
+
+automation: {
+enabled: false,
+function: null,
+functionText: "",
+parameters: {type: "sine", frequency: 0.5}
+}, // automation
 }; // defaultParameter
-
-
 
 
 function createParameterMap (parameterData) {

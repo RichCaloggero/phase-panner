@@ -67,6 +67,7 @@ const room = Reverb.defaultRoom();
 const xtc = new Xtc(audio);
 const projectList = [];
 let projectName = "Untitled Project";
+let tickCount = 0;
 
 /// connections
 player.connect(input);
@@ -338,6 +339,45 @@ r * sin(a),
 );
 } // setPosition
 
+/// automation
+
+function runAutomation (enabled, automator, tick) {
+if (enabled) {
+parameters.forEach(parameter => automator(audio.currentTime, parameter));
+//processGroups(automation.groups);
+tickCount += 1;
+setTimeout(() => runAutomation(enabled, automator, tick), 1000 * tick);
+
+} else {
+console.log("automation stopped at tick  ", tickCount);
+} // enabled
+} // runAutomation
+
+function automator (t, parameter) {
+if (!parameter || !parameter.automation.enabled) return;
+try {
+if (!parameter.function) throw new Error(`No function to run for parameter ${parameter.name}`);
+
+parameter.value = parameter.automation.function(t);
+_update(parameter);
+
+//if (parameter.group) updateGroup(parameter, parameter.function(t));
+//else update(parameter.name, parameter.function(t));
+
+parameter.tickCount += 1;
+
+
+} catch (e) {
+message(`Automator: failed to automate ${parameter.name}; ${e}`);
+
+if (parameter.automation.tickCount > 0) {
+console.log ("stopping automation of ", parameter.name, " at tick ", parameter.automation.tickCount);
+parameter.automation.tickCount = 0;
+} // if tickCount
+} // catch
+} // automator
+
+
 /// utilities
 
 
@@ -410,6 +450,23 @@ scene.setAmbisonicOrder(order);
 return scene;
 } // createScene
 
+function compile(text) {
+try {
+f = _compile(text, "t");
+f(0); // to be sure it was compiled correctly
+return f;
+} catch (e) {
+message (`invalid function: ${text}\n${e}`);
+return undefined;
+} // catch
+
+function _compile (body, parameters = "x") {
+if (! body.includes("return")) body = `return (${body})`;
+
+return new Function (parameters,
+`with (Math) {${body};}`);
+} // _compile
+} // compile
 
 </script>
 

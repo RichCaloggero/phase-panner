@@ -201,6 +201,28 @@ updater: function (value) {
 output.gain.value = value;
 }
 }, {
+name: "automationFunction", type: "text", list: false,
+updater: function (value) {
+const parameter = parameters.get(getParameterName());
+if (parameter && value) {
+parameter.automation.functionText = value;
+parameter.automation.function = compile(value);
+return parameter;
+} // if
+
+}
+}, {
+name: "enableAutomation", type: "checkbox", list: false,
+updater: function (value) {
+const parameter = parameters.get(getParameterName());
+if (parameter) {
+parameter.automation.enabled = value;
+return parameter;
+} // if
+}
+}, {
+
+
 name: "projectName", type: "text", list: false,
 updater: function (value) {
 console.log("projectName: ", value);

@@ -10,6 +10,7 @@ updater: null, // function (value) {console.log(`Parameter.updater: receiving va
 
 const defaultAutomation = {
 enabled: false,
+tickCount: 0,
 function: null,
 functionText: "",
 shape: "sine",

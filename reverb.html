@@ -253,9 +253,11 @@ label.textContent = parameter.label || parameter.name;
 label.appendChild(element);
 container.appendChild(label);
 } // if
-//setTimeout(() => {
+
+ui("functionText").value = parameter.automation.functionText;
+ui("enableAutomation").checked = parameter.automation.enabled;
+
 message(`${parameter.name}: ${element.value}`);
-//}, 50);
 } // displayParameter
 
 /// projects
@@ -375,18 +377,17 @@ try {
 if (!parameter.automation.function) throw new Error(`No function to run for parameter ${parameter.name}`);
 
 parameter.value = parameter.automation.function(t);
-
+parameter.automation.tickCount += 1;
 _update(parameter);
 
 //if (parameter.group) updateGroup(parameter, parameter.function(t));
 //else update(parameter.name, parameter.function(t));
 
-parameter.tickCount += 1;
 
 } catch (e) {
 message(`Automator: failed to automate ${parameter.name}; ${e}\n${e.stack}`);
 parameter.automation.enabled = false;
-//console.log ("stopping automation of ", parameter.name, " at tick ", parameter.automation.tickCount);
+console.log ("stopping automation of ", parameter.name, " at tick ", parameter.automation.tickCount);
 } // catch
 } // automator
 
@@ -474,7 +475,7 @@ message (`invalid function: ${text}\n${e}\n${e.stack}`);
 return undefined;
 } // catch
 
-function _compile (body, parameters = "x") {
+/*function _compile (body, parameters = "x") {
 //console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
 
 if (! body) return null;
@@ -482,9 +483,9 @@ if (! body.includes("return")) body = `return (${body})`;
 
 return new Function (parameters, body); // new Function
 } // _compile
+*/
 
-
-/*function _compile (body, parameters = "x") {
+function _compile (body, parameters = "x") {
 //console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
 
 if (! body) return null;
@@ -497,7 +498,6 @@ ${body};
 }`
 ); // new Function
 } // _compile
-*/
 } // compile
 
 </script>

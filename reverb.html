@@ -104,7 +104,7 @@ _update(parameters.get("projectList"));
 ui("projectList").focus();
 if (automationEnabled) runAutomation(automator);
 
-console.log("initialization complete.");
+//console.log("initialization complete.");
 
 
 /// events
@@ -121,7 +121,7 @@ message (e.target.getAttribute("data-value"));
 
 
 ui("controls").addEventListener("change", e => {
-console.log("change event on ", e.target.id);
+//console.log("change event on ", e.target.id);
 update(e.target)
 });
 
@@ -179,12 +179,12 @@ if (parameter.list && parameter.name !== "dimensions" && parameter.name !== "rot
 } // updateAll
 
 function update (element) {
-console.log(`update: ${element.id}, ${element.type}, ${element.value}, ${element.checked}`);
+//console.log(`update: ${element.id}, ${element.type}, ${element.value}, ${element.checked}`);
 const parameterName = (element.id === "value")?
 getParameterName() : element.id;
 if (! parameterName) return;
 const parameter = parameters.get(parameterName);
-console.log("- parameter: ", parameter.name, " is type ", parameter.type);
+//console.log("- parameter: ", parameter.name, " is type ", parameter.type);
 
 let value = element.value.trim();
 if (parameter.type === "range" || parameter.type === "number") {
@@ -262,7 +262,7 @@ message(`${parameter.name}: ${element.value}`);
 
 function save () {
 updateProjectList(createProject());
-console.log("save: first project name is ", projectList[0].name);
+//console.log("save: first project name is ", projectList[0].name);
 localStorage.setItem("reverb", JSON.stringify(projectList));
 message(`Saved ${projectList.length} projects.`);
 } // save
@@ -271,9 +271,9 @@ function restore () {
 try {
 const list = JSON.parse(localStorage.getItem("reverb"));
 projectList = list;
-console.log(`restoring ${list.length} items...`);
+//console.log(`restoring ${list.length} items...`);
 populateSelector(ui("projectList"), list.map(p => p.name));
-console.log("- project selector initialized");
+//console.log("- project selector initialized");
 if (findProject(projectName)) {
 loadProject(projectName);
 } else if (projectList.length > 0) {
@@ -347,8 +347,10 @@ r * sin(a),
 
 /// automation
 
-function runAutomation (automator, tick = 0.1) {
+function runAutomation (automator) {
 if (automationEnabled) {
+const tick = Number(parameters.get("tick").value);
+//console.log("runAutomation...");
 parameters.forEach(parameter => {
 if (parameter.automation.enabled && parameter.automation.function) {
 automator(audio.currentTime, parameter);
@@ -358,21 +360,21 @@ automator(audio.currentTime, parameter);
 //processGroups(automation.groups);
 tickCount += 1;
 
-if (automationEnabled) setTimeout(() => runAutomation(automator, tick), 1000 * tick);
+if (automationEnabled) setTimeout(() => runAutomation(automator), 1000 * tick);
 
 } else {
-console.log("automation stopped at tick  ", tickCount);
+//console.log("automation stopped at tick  ", tickCount);
 } // enabled
 } // runAutomation
 
 function automator (t, parameter) {
+//console.log(`automator: ${parameter}`);
 if (!parameter || !parameter.automation.enabled) return;
+//console.log(`automator: ${t}, ${parameter.name}, ${parameter.value}, ${parameter.automation.function.toSource()}`);
 try {
 if (!parameter.automation.function) throw new Error(`No function to run for parameter ${parameter.name}`);
 
-with Math {
 parameter.value = parameter.automation.function(t);
-} // with
 
 _update(parameter);
 
@@ -384,7 +386,7 @@ parameter.tickCount += 1;
 } catch (e) {
 message(`Automator: failed to automate ${parameter.name}; ${e}\n${e.stack}`);
 parameter.automation.enabled = false;
-console.log ("stopping automation of ", parameter.name, " at tick ", parameter.automation.tickCount);
+//console.log ("stopping automation of ", parameter.name, " at tick ", parameter.automation.tickCount);
 } // catch
 } // automator
 
@@ -465,6 +467,7 @@ function compile(text) {
 try {
 const f = _compile(text, "t");
 f(0); // to be sure it was compiled correctly
+//console.log (`- function: ${f.toSource()}`);
 return f;
 } catch (e) {
 message (`invalid function: ${text}\n${e}\n${e.stack}`);
@@ -472,7 +475,7 @@ return undefined;
 } // catch
 
 function _compile (body, parameters = "x") {
-console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
+//console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
 
 if (! body) return null;
 if (! body.includes("return")) body = `return (${body})`;
@@ -482,7 +485,7 @@ return new Function (parameters, body); // new Function
 
 
 /*function _compile (body, parameters = "x") {
-console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
+//console.log(`_compile: ${typeof(body)} ${body} \n- parameters: ${parameters}`);
 
 if (! body) return null;
 if (! body.includes("return")) body = `return (${body})`;

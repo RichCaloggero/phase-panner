@@ -205,29 +205,25 @@ name: "functionText", type: "text", list: false,
 updater: function (value) {
 const parameter = parameters.get(getParameterName());
 if (parameter && value) {
-console.log(`- setting functionText for ${parameter.name} to ${value}`);
+//console.log(`- setting functionText for ${parameter.name} to ${value}`);
 parameter.automation.functionText = value;
 parameter.automation.function = compile(value);
-console.log(`- compiled: ${parameter.automation.function}`);
-return parameter;
+//console.log(`- compiled: ${parameter.automation.function}`);
 } // if
-
 }
 }, {
 name: "enableAutomation", type: "checkbox", list: false,
 updater: function (value) {
 const parameter = parameters.get(getParameterName());
 if (parameter) {
-console.log(`enableAutomation: ${parameter.name} = ${value}`);
+//console.log(`enableAutomation: ${parameter.name} = ${value}`);
 parameter.automation.enabled = value;
 
-if (value) {
+if (value && !parameter.automation.function) {
 parameter.automation.functionText = ui("functionText").value.trim();
-console.log (`- compiling ${parameter.automation.functionText}...`);
+//console.log (`- compiling ${parameter.automation.functionText}...`);
 parameter.automation.function = compile(parameter.automation.functionText);
 } // if
-
-return parameter;
 } // if
 }
 }, {
@@ -237,11 +233,14 @@ automationEnabled = value;
 if (automationEnabled) runAutomation(automator);
 }
 }, {
-
-
+name: "tick", 
+value: 0.1, min: 0.01, max: 0.5, step: 0.01,
+updater: function (value) {
+}
+}, {
 name: "projectName", type: "text", list: false,
 updater: function (value) {
-console.log("projectName: ", value);
+//console.log("projectName: ", value);
 projectName = value;
 }
 }, {

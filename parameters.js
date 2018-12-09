@@ -6,21 +6,21 @@ type: "range",
 value: 0, min: 0, max: 1, step: 0.1,
 selectedIndex: 0,
 updater: null, // function (value) {console.log(`Parameter.updater: receiving value ${value}`);},
+}; // defaultParameter
 
-automation: {
+const defaultAutomation = {
 enabled: false,
 function: null,
 functionText: "",
 shape: "sine",
 frequency: 0.5
-}, // automation
-}; // defaultParameter
-
+}; // defaultAutomation
 
 function createParameterMap (parameterData) {
 const parameters = new Map();
 parameterData.forEach(data => {
 const p = Object.assign({}, defaultParameter, data);
+p.automation = Object.assign({}, defaultAutomation, data.automation);
 parameters.set(p.name, p);
 }); // forEach
 

@@ -67,6 +67,7 @@ const scene = createScene();
 const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
 const xtc = new Xtc(audio);
+const delay = new Delay(audio);
 const projectList = [];
 let projectName = "Untitled Project";
 let tickCount = 0;
@@ -74,7 +75,8 @@ let automationEnabled = true;
 
 /// connections
 player.connect(input);
-input.connect(reverb.input);
+input.connect(delay.input);
+delay.output.connect(reverb.input);
 reverb.output.connect(xtc.input);
 xtc.output.connect(output).connect(audio.destination);
 

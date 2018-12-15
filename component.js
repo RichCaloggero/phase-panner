@@ -163,3 +163,19 @@ m.connect(this.wet);
 m.connect(this.feedback).connect(s);
 } // constructor
 } // class Xtc
+
+class Delay extends Component {
+constructor (audio) {
+super (audio);
+this.context = audio;
+this.leftDelay = audio.createDelay();
+this.rightDelay = audio.createDelay();
+const s = audio.createChannelSplitter(2);
+const m = audio.createChannelMerger(2);
+
+this.input.connect(s);
+s.connect(this.leftDelay, 0).connect(m, 0,0);
+s.connect(this.rightDelay, 1).connect(m, 0,1);
+m.connect(this.wet);
+} // constructor
+} // class Delay

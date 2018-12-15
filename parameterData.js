@@ -5,6 +5,18 @@ audioElement.src = value;
 audioElement.play();
 },
 }, {
+name: "delayLeft",
+value: 0, min: 0, max: 0.050, step: 0.0002,
+updater: function (value) {
+delay.leftDelay.delayTime.value = value;
+}
+}, {
+name: "delayRight",
+value: 0, min: 0, max: 0.050, step: 0.0002,
+updater: function (value) {
+delay.rightDelay.delayTime.value = value;
+}
+}, {
 name: "mix",
 updater: function (value) {
 reverb.mix(value);

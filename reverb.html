@@ -68,6 +68,7 @@ const reverb = new Reverb(audio, scene);
 const room = Reverb.defaultRoom();
 const xtc = new Xtc(audio);
 const delay = new Delay(audio);
+delay.mix(1);
 const projectList = [];
 let projectName = "Untitled Project";
 let tickCount = 0;

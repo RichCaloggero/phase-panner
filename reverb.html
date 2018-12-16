@@ -36,7 +36,7 @@ label {display: block;}
 <label>enable automation: <input id="enableAutomation" type="checkbox" accesskey="e"></label>
 <label>automation frequency: <input id="automationFrequency" type="range" value="1" min="0" max="100" step="0.1"></label>
 <label>automation shape: <select id="automationShape"></select></label>
-<label>run automation: <input id="runAutomation" type="checkbox" checked accesskey="r"></label>
+<label>run automation: <input id="runAutomation" type="checkbox" accesskey="r"></label>
 </div><!-- #parameters -->
 
 <div id="output">
@@ -72,7 +72,7 @@ delay.mix(1);
 const projectList = [];
 let projectName = "Untitled Project";
 let tickCount = 0;
-let automationEnabled = true;
+let automationEnabled = false;
 
 /// connections
 player.connect(input);

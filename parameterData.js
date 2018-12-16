@@ -55,21 +55,21 @@ reverb.updateRoom(room);
 },
 }, {
 name: "floor", type: "select", options: Reverb.materialsList(),
-selectedIndex: 6,
+selectedIndex: 0,
 updater: function (value) {
 room.materials.down = value;
 reverb.updateRoom(room);
 }
 }, {
 name: "ceiling", type: "select", options: Reverb.materialsList(),
-selectedIndex: 1,
+selectedIndex: 0,
 updater: function (value) {
 room.materials.up = value;
 reverb.updateRoom(room);
 }
 }, {
 name: "leftWall", type: "select",
-selectedIndex: 6,
+selectedIndex: 0,
 options: Reverb.materialsList(),
 updater: function (value) {
 room.materials.left = value;
@@ -78,7 +78,7 @@ reverb.updateRoom(room);
 }, {
 name: "rightWall", type: "select",
 options: Reverb.materialsList(),
-selectedIndex: 6,
+selectedIndex: 0,
 updater: function (value) {
 room.materials.right = value;
 reverb.updateRoom(room);
@@ -86,7 +86,7 @@ reverb.updateRoom(room);
 }, {
 name: "frontWall", type: "select",
 options: Reverb.materialsList(),
-selectedIndex: 6,
+selectedIndex: 0,
 updater: function (value) {
 room.materials.front = value;
 reverb.updateRoom(room);
@@ -94,7 +94,7 @@ reverb.updateRoom(room);
 }, {
 name: "backWall", type: "select",
 options: Reverb.materialsList(),
-selectedIndex: 6,
+selectedIndex: 0,
 updater: function (value) {
 room.materials.back = value;
 reverb.updateRoom(room);
